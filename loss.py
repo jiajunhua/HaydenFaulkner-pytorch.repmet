@@ -65,7 +65,7 @@ class Loss(object):
             if type(self.centroids).__module__ == np.__name__:
                 self.centroids[start:stop] = kmeans.cluster_centers_
             elif type(self.centroids).__module__ == torch.__name__:
-                self.centroids.data[start:stop] = torch.cuda.FloatTensor(kmeans.cluster_centers_)  # apply on data so it stays leaf
+                self.centroids.data[start:stop] = torch.cuda.FloatTensor(kmeans.cluster_centers_)  # apply on data_loading so it stays leaf
             elif type(self.centroids).__module__ == 'torch.nn.parameter':
                 self.centroids.data[start:stop] = torch.cuda.FloatTensor(kmeans.cluster_centers_)
 

@@ -1,0 +1,6 @@
+run_id: 'tester'
+
+model:
+  id: '01'
+  path: "./models/01"
+

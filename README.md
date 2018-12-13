@@ -1,6 +1,7 @@
 # Magnet Loss and RepMet in PyTorch
+**NOTE 1: THIS PROJECT IS BEING REWORKED TO BE MORE READABLE, HOPEFULLY WILL ADD DETECTION TOO**
 
-**NOTE: THIS PROJECT IS ON HOLD WHILE I WORK ON THE DETECTION PIPELINE IN MXNET**
+**NOTE 2: THIS PROJECT IS ON HOLD WHILE I WORK ON THE DETECTION PIPELINE IN MXNET**
 
 This takes a lot from the Tensorflow Magnet Loss code: [pumpikano/tf-magnet-loss](https://github.com/pumpikano/tf-magnet-loss)
 

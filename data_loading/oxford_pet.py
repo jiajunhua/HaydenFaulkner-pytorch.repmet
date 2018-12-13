@@ -12,7 +12,7 @@ from torchvision.datasets.utils import download_url, list_dir, list_files
 
 
 class OxPet(data.Dataset):
-    """`Oxford-IIIT Pet <http://www.robots.ox.ac.uk/~vgg/data/pets/>`_ Dataset.
+    """`Oxford-IIIT Pet <http://www.robots.ox.ac.uk/~vgg/data_loading/pets/>`_ Dataset.
     Args:
         root (string): Root directory of dataset where directory exists.
         cropped (bool, optional): If true, the images will be cropped into the bounding box specified
@@ -26,7 +26,7 @@ class OxPet(data.Dataset):
             downloaded again.
     """
     folder = 'OxfordPets'
-    download_url_prefix = 'http://www.robots.ox.ac.uk/~vgg/data/pets/data'
+    download_url_prefix = 'http://www.robots.ox.ac.uk/~vgg/data_loading/pets/data_loading'
 
     def __init__(self,
                  root,

@@ -25,7 +25,7 @@ class OxFlowers(data.Dataset):
             downloaded again.
     """
     folder = 'OxfordFlowers'
-    download_url_prefix = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102'
+    download_url_prefix = 'http://www.robots.ox.ac.uk/~vgg/data_loading/flowers/102'
 
     def __init__(self,
                  root,

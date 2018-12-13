@@ -7,8 +7,8 @@ import torch.backends.cudnn as cudnn
 
 import configs
 from utils import *
-from data.load import load_datasets
-from models.load import load_net
+from data_loading.load import load_datasets
+from model_definitions.initialize import load_net
 
 assert torch.cuda.is_available(), 'Error: CUDA not found!'
 
@@ -91,7 +91,7 @@ def parse_args():
     parser.add_argument('--chunk_size', required=False, help='the chunk/batch size for calculating embeddings (lower for less mem)', default=32, type=int)
     parser.add_argument('--split', required=False, help='train/test', default='test')
     parser.add_argument('--load_iteration', required=False, help='load this iteration (-1 will be latest)', default=-1)
-    parser.add_argument('--load_path', required=False, help='where to load the models from', default=configs.general.paths.models)
+    parser.add_argument('--load_path', required=False, help='where to load the model_definitions from', default=configs.general.paths.models)
     parser.add_argument('--plots_path', required=False, help='where to save the plots', default=configs.general.paths.graphing)
     parser.add_argument('--plots_ext', required=False, help='.png/.pdf', default='.png')
     args = parser.parse_args()
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     #          plots_path=args.plots_path,
     #          plots_ext=args.plots_ext)
 
-    evaluate('004_r50_k1_resnet18_e1024', 'oxford_flowers', 'resnet18_e1024', split='train', load_iteration=1000)
-    evaluate('004_r50_k1_resnet18_e1024_nc', 'oxford_flowers', 'resnet18_e1024', split='train', load_iteration=1000)
-    evaluate('004_r50_k1_resnet18_e1024', 'oxford_flowers', 'resnet18_e1024', split='test', load_iteration=1000)
-    evaluate('004_r50_k1_resnet18_e1024_nc', 'oxford_flowers', 'resnet18_e1024', split='test', load_iteration=1000)
+    evaluate('004_r50_k3_resnet18_e1024', 'oxford_flowers', 'resnet18_e1024', split='train', load_iteration=2000)
+    evaluate('004_r50_k3_resnet18_e1024_nc', 'oxford_flowers', 'resnet18_e1024', split='train', load_iteration=2000)
+    evaluate('004_r50_k3_resnet18_e1024', 'oxford_flowers', 'resnet18_e1024', split='test', load_iteration=2000)
+    evaluate('004_r50_k3_resnet18_e1024_nc', 'oxford_flowers', 'resnet18_e1024', split='test', load_iteration=2000)

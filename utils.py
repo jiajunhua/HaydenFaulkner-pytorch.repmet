@@ -280,7 +280,7 @@ def get_labels(dataset, numpy=True):
 # Get dataset inputs
 def get_inputs(dataset, indexs):
     """
-    Gets the input data from a dataset
+    Gets the input data_loading from a dataset
     :param dataset: The dataset
     :param indexs: List of the sample indexs
     :return: A tensor with the inputs stacked

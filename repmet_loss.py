@@ -5,8 +5,46 @@ import torch.nn as nn
 from loss import Loss
 from utils import ensure_tensor, ensure_numpy
 
+class RepMetLoss(torch.nn.Module):
 
-class RepMetLoss(Loss):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def loss(self, x, y):
+        """Compute repmet loss.
+
+        Given a tensor of features `x`, the assigned class for each example,
+        compute the repmet loss according to equations (5) in
+        https://arxiv.org/pdf/1806.04728.pdf.
+
+        Args:
+            x: Distances (Class x k)
+            y: Class labels for each example.
+
+        Returns:
+            total_loss: The total magnet loss for the batch.
+            losses: The loss for each example in the batch.
+            acc: The predictive accuracy of the batch
+        """
+
+
+
+        # Compute example losses and total loss
+        epsilon = 1e-8
+
+        # Compute example losses and total loss
+        losses = F.relu(-torch.log(numerator / (denominator + epsilon) + epsilon) + self.alpha)
+
+        total_loss = losses.mean()
+
+        _, preds = distances.min(1)
+        preds = ensure_tensor(self.cluster_classes[preds]).cuda()  # convert from cluster ids to class ids
+        acc = torch.eq(y, preds).float().mean()
+
+        return total_loss, losses, acc
+
+
+class RepMetLoss1(Loss):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
