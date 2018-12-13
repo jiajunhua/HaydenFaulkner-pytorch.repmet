@@ -8,7 +8,7 @@ from easydict import EasyDict as edict
 config = edict()
 
 # Shared Defaults
-config.root_path = ''
+config.root_dir = ''
 config.run_id = ''
 
 config.gpus = ''
@@ -18,7 +18,7 @@ config.emb_dim = 256
 # Model Defaults
 config.model = edict()
 config.model.id = ''
-config.model.path = 'models'
+config.model.root_dir = 'models'
 
 config.model.backbone = edict()
 config.model.backbone.name = ''  # What model spec to use for the backbone, if backbone nec
@@ -27,7 +27,7 @@ config.model.backbone.out_layer = ''  # What layer do we take from the backbone 
 # Data Defaults
 config.data = edict()
 config.data.id = ''
-config.data.path = 'data'
+config.data.root_dir = 'data'
 
 # Train Defaults
 config.train = edict()

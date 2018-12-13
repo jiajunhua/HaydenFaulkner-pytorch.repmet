@@ -1,57 +1,53 @@
+"""
+Oxford Flowers dataset loader
+
+1020 samples spanning 102 classes (avg 10 per class)
+
+http://www.robots.ox.ac.uk/~vgg/data/flowers
+"""
+
 from __future__ import print_function
 
 from PIL import Image
 from os.path import join
 import os
 import scipy.io
+import tarfile
+import shutil
+import numpy as np
 
-import torch.utils.data as data
-from torchvision.datasets.utils import download_url, list_dir, list_files
+from torch.utils.data.dataset import Dataset
+from torchvision.datasets.utils import download_url
 
 
-class OxFlowers(data.Dataset):
-    """`Stanford Dogs <http://vision.stanford.edu/aditya86/ImageNetDogs/>`_ Dataset.
-    Args:
-        root (string): Root directory of dataset where directory
-            ``omniglot-py`` exists.
-        cropped (bool, optional): If true, the images will be cropped into the bounding box specified
-            in the annotations
-        transform (callable, optional): A function/transform that  takes in an PIL image
-            and returns a transformed version. E.g, ``transforms.RandomCrop``
-        target_transform (callable, optional): A function/transform that takes in the
-            target and transforms it.
-        download (bool, optional): If true, downloads the dataset tar files from the internet and
-            puts it in root directory. If the tar files are already downloaded, they are not
-            downloaded again.
-    """
-    folder = 'OxfordFlowers'
-    download_url_prefix = 'http://www.robots.ox.ac.uk/~vgg/data_loading/flowers/102'
+class OxfordFlowersDataset(Dataset):
+    sub_root_dir = 'OxfordFlowers'
 
     def __init__(self,
-                 root,
-                 train=True,
-                 val=False,
+                 root_dir,
+                 split='train',
                  transform=None,
                  target_transform=None,
-                 download=False,
-                 classes=None):
+                 force_download=False,
+                 labels=None):
 
-        self.root = join(os.path.expanduser(root), self.folder)
-        self.train = train
-        self.val = val
+        self.root_dir = join(os.path.expanduser(root_dir), self.sub_root_dir)
+        self.split = split
         self.transform = transform
         self.target_transform = target_transform
+        self.labels = []
 
-        if download:
-            self.download()
+        self.download(force=force_download)
 
-        self.split = self.load_split()
-        # self.split = self.split[:100]  # TODO: debug only get first ten classes
+        self.data = self.load_data_split()
 
-        self.images_folder = join(self.root, 'jpg')
+        self.images_sub_root_dir = join(self.root_dir, 'jpg')
+
+        if labels:
+            self.labels_subset(labels)
 
     def __len__(self):
-        return len(self.split)
+        return len(self.data)
 
     def __getitem__(self, index):
         """
@@ -62,8 +58,8 @@ class OxFlowers(data.Dataset):
         """
         from PIL import ImageFile
         ImageFile.LOAD_TRUNCATED_IMAGES = True
-        image_name, target_class = self.split[index]
-        image_path = join(self.images_folder, "image_%05d.jpg" % (image_name+1))
+        image_name, target_class = self.data[index]
+        image_path = join(self.images_sub_root_dir, "image_%05d.jpg" % image_name)
         image = Image.open(image_path).convert('RGB')
 
         if self.transform:
@@ -74,53 +70,100 @@ class OxFlowers(data.Dataset):
 
         return image, target_class
 
-    def download(self):
-        import tarfile
+    def download(self, force=False):
+        download_url_prefix = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102'
 
-        if os.path.exists(join(self.root, 'jpg')) and os.path.exists(join(self.root, 'imagelabels.mat')) and os.path.exists(join(self.root, 'setid.mat')):
-            if len(os.listdir(join(self.root, 'jpg'))) == 8189:
+        if os.path.exists(join(self.root_dir, 'jpg')) and os.path.exists(join(self.root_dir, 'imagelabels.mat'))\
+                and os.path.exists(join(self.root_dir, 'setid.mat')):
+            if not force and len(os.listdir(join(self.root_dir, 'jpg'))) == 8189:
                 print('Files already downloaded and verified')
                 return
+            else:
+                shutil.rmtree(self.root_dir)
 
+        os.makedirs(self.root_dir, exist_ok=True)
         filename = '102flowers'
         tar_filename = filename + '.tgz'
-        url = self.download_url_prefix + '/' + tar_filename
-        download_url(url, self.root, tar_filename, None)
-        with tarfile.open(join(self.root, tar_filename), 'r') as tar_file:
-            tar_file.extractall(self.root)
-        os.remove(join(self.root, tar_filename))
+        url = join(download_url_prefix, tar_filename)
+        download_url(url, self.root_dir, tar_filename, None)
+        with tarfile.open(join(self.root_dir, tar_filename), 'r') as tar_file:
+            tar_file.extractall(self.root_dir)
+        os.remove(join(self.root_dir, tar_filename))
 
         filename = 'imagelabels.mat'
-        url = self.download_url_prefix + '/' + filename
-        download_url(url, self.root, filename, None)
+        url = join(download_url_prefix, filename)
+        download_url(url, self.root_dir, filename, None)
 
         filename = 'setid.mat'
-        url = self.download_url_prefix + '/' + filename
-        download_url(url, self.root, filename, None)
+        url = join(download_url_prefix, filename)
+        download_url(url, self.root_dir, filename, None)
 
-    def load_split(self):
-        split = scipy.io.loadmat(join(self.root, 'setid.mat'))
-        labels = scipy.io.loadmat(join(self.root, 'imagelabels.mat'))['labels']
-        if self.train:
-            split = split['trnid']
-        elif self.val:
-            split = split['valid']
-        else:
-            split = split['tstid']
+    def load_data_split(self):
 
-        split = list(split[0] - 1) # set it all back 1 as img indexs start at 1
-        labels = list(labels[0][split]-1)
-        return list(zip(split, labels))
+        assert self.split in ['train', 'val', 'test']
+
+        data = scipy.io.loadmat(join(self.root_dir, 'setid.mat'))
+        labels = scipy.io.loadmat(join(self.root_dir, 'imagelabels.mat'))['labels']
+
+        self.labels = list(np.unique(labels))
+
+        if self.split == 'train':
+            data = data['trnid']
+        elif self.split == 'val':
+            data = data['valid']
+        elif self.split == 'test':
+            data = data['tstid']
+
+        data = list(data[0])
+        labels = list(labels[0][data])
+        return list(zip(data, labels))
+
+    def labels_subset(self, labels):
+        assert isinstance(labels, list)
+        data = []
+        for i, sample in enumerate(self.data):
+            if sample[1] in labels:
+                data.append(self.data[i])
+        self.data = data
+        self.labels = labels
 
     def stats(self):
+        counts = self.class_counts()
+
+        return "%d samples spanning %d classes (avg %d per class)" % \
+               (len(self.data), len(counts.keys()), int(float(len(self.data))/float(len(counts.keys()))))
+
+    def class_counts(self):
         counts = {}
-        for index in range(len(self.split)):
-            image_name, target_class = self.split[index]
+        for index in range(len(self.data)):
+            image_name, target_class = self.data[index]
             if target_class not in counts.keys():
                 counts[target_class] = 1
             else:
                 counts[target_class] += 1
 
-        print("%d samples spanning %d classes (avg %f per class)"%(len(self.split), len(counts.keys()), float(len(self.split))/float(len(counts.keys()))))
-
         return counts
+
+
+if __name__ == "__main__":
+    from config.config import config
+    import matplotlib.pyplot as plt
+
+    dataset = OxfordFlowersDataset(root_dir=config.data.root_dir)
+
+    print(dataset.stats())
+
+    fig = plt.figure()
+
+    for i in range(len(dataset)):
+        sample = dataset[i]
+
+        ax = plt.subplot(1, 4, i + 1)
+        plt.tight_layout()
+        ax.set_title('Sample %d - Class %d' % (i, sample[1]))
+        ax.axis('off')
+        plt.imshow(sample[0])
+
+        if i == 3:
+            plt.show()
+            break
