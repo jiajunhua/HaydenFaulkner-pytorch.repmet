@@ -67,6 +67,7 @@ class EpisodeBatchSampler(object):
     def __len__(self):
         return self.episodes
 
+
 if __name__ == "__main__":
     # use this for debugging and checks
     from utils.debug import set_working_dir
@@ -93,4 +94,3 @@ if __name__ == "__main__":
             x, y = batch
             print(x)
             print(y)
-            break
