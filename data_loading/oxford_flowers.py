@@ -25,13 +25,15 @@ class OxfordFlowersDataset(Dataset):
 
     download_url_prefix = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102'
 
+    images_dir = 'jpg'
+
     def __init__(self,
                  root_dir,
                  split='train',
                  transform=None,
                  target_transform=None,
                  force_download=False,
-                 labels=None):
+                 categories_subset=None):
 
         self.root_dir = join(os.path.expanduser(root_dir), self.sub_root_dir)
         self.split = split
@@ -41,12 +43,7 @@ class OxfordFlowersDataset(Dataset):
 
         self.download(force=force_download)
 
-        self.data = self.load_data_split()
-
-        self.images_sub_root_dir = join(self.root_dir, 'jpg')
-
-        if labels:
-            self.labels_subset(labels)
+        self.data = self.load_data_split(categories_subset=categories_subset)
 
     def __len__(self):
         return len(self.data)
@@ -58,11 +55,9 @@ class OxfordFlowersDataset(Dataset):
         Returns:
             tuple: (image, target) where target is index of the target character class.
         """
-        from PIL import ImageFile
-        ImageFile.LOAD_TRUNCATED_IMAGES = True
         image_name, target_class = self.data[index]
-        image_path = join(self.images_sub_root_dir, "image_%05d.jpg" % image_name)
-        image = Image.open(image_path).convert('RGB')
+
+        image = self.load_img(join(join(self.root_dir, self.images_dir), "image_%05d.jpg" % image_name))
 
         if self.transform:
             image = self.transform(image)
@@ -99,34 +94,57 @@ class OxfordFlowersDataset(Dataset):
         url = join(self.download_url_prefix, filename)
         download_url(url, self.root_dir, filename, None)
 
-    def load_data_split(self):
-
+    def load_data_split(self, categories_subset=None):
+        """
+        sets categories, categories_to_labels,
+        :param categories_subset: if not None only include the categories listed in this iterable
+        :return:
+        """
         assert self.split in ['train', 'val', 'test']
 
-        data = scipy.io.loadmat(join(self.root_dir, 'setid.mat'))
-        labels = scipy.io.loadmat(join(self.root_dir, 'imagelabels.mat'))['labels']
+        samples = scipy.io.loadmat(join(self.root_dir, 'setid.mat'))
+        categories = scipy.io.loadmat(join(self.root_dir, 'imagelabels.mat'))['labels']
 
-        self.labels = list(np.unique(labels))
+        self.categories = list(np.unique(categories))
 
         if self.split == 'train':
-            data = data['trnid']
+            samples = samples['trnid']
         elif self.split == 'val':
-            data = data['valid']
+            samples = samples['valid']
         elif self.split == 'test':
-            data = data['tstid']
+            samples = samples['tstid']
 
-        data = list(data[0])
-        labels = list(labels[0][data])
+        samples = list(samples[0])
+        categories = list(categories[0][samples])
+
+        # Build categories to labels (cats can be names, labels are ints starting from 0)
+        self.categories_to_labels = {}
+        self.labels_to_categories = {}
+        for c in categories:
+            if c not in self.categories_to_labels:
+                self.categories_to_labels[c] = len(self.categories_to_labels)
+                self.labels_to_categories[self.categories_to_labels[c]] = c
+
+        data = []
+        labels = []
+        for index in range(len(samples)):
+            category = categories[index]
+            if categories_subset:
+                if category in categories_subset:
+                    data.append(samples[index])
+                    labels.append(self.categories_to_labels[categories[index]])
+            else:  # categories_subset is None so add all
+                data.append(samples[index])
+                labels.append(self.categories_to_labels[categories[index]])
+
         return list(zip(data, labels))
 
-    def labels_subset(self, labels):
-        assert isinstance(labels, list)
-        data = []
-        for i, sample in enumerate(self.data):
-            if sample[1] in labels:
-                data.append(self.data[i])
-        self.data = data
-        self.labels = labels
+    def load_img(self, path):
+        from PIL import ImageFile
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
+        x = Image.open(path).convert('RGB')
+
+        return x
 
     def stats(self):
         counts = self.class_counts()
@@ -153,7 +171,7 @@ if __name__ == "__main__":
 
     set_working_dir()
 
-    dataset = OxfordFlowersDataset(root_dir=config.data.root_dir)
+    dataset = OxfordFlowersDataset(root_dir=config.data.root_dir, categories_subset=[1,2,34])
 
     print(dataset.stats())
 
@@ -164,7 +182,7 @@ if __name__ == "__main__":
 
         ax = plt.subplot(1, 4, i + 1)
         plt.tight_layout()
-        ax.set_title('Sample %d - Class %d' % (i, sample[1]))
+        ax.set_title('Sample %d - Class %d' % (i, dataset.labels_to_categories[sample[1]]))
         ax.axis('off')
         plt.imshow(sample[0])
 
