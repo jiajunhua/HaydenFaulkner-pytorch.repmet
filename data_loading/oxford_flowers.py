@@ -23,6 +23,8 @@ from torchvision.datasets.utils import download_url
 class OxfordFlowersDataset(Dataset):
     sub_root_dir = 'OxfordFlowers'
 
+    download_url_prefix = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102'
+
     def __init__(self,
                  root_dir,
                  split='train',
@@ -71,7 +73,6 @@ class OxfordFlowersDataset(Dataset):
         return image, target_class
 
     def download(self, force=False):
-        download_url_prefix = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102'
 
         if os.path.exists(join(self.root_dir, 'jpg')) and os.path.exists(join(self.root_dir, 'imagelabels.mat'))\
                 and os.path.exists(join(self.root_dir, 'setid.mat')):
@@ -84,18 +85,18 @@ class OxfordFlowersDataset(Dataset):
         os.makedirs(self.root_dir, exist_ok=True)
         filename = '102flowers'
         tar_filename = filename + '.tgz'
-        url = join(download_url_prefix, tar_filename)
+        url = join(self.download_url_prefix, tar_filename)
         download_url(url, self.root_dir, tar_filename, None)
         with tarfile.open(join(self.root_dir, tar_filename), 'r') as tar_file:
             tar_file.extractall(self.root_dir)
         os.remove(join(self.root_dir, tar_filename))
 
         filename = 'imagelabels.mat'
-        url = join(download_url_prefix, filename)
+        url = join(self.download_url_prefix, filename)
         download_url(url, self.root_dir, filename, None)
 
         filename = 'setid.mat'
-        url = join(download_url_prefix, filename)
+        url = join(self.download_url_prefix, filename)
         download_url(url, self.root_dir, filename, None)
 
     def load_data_split(self):
