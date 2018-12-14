@@ -32,6 +32,16 @@ class OxfordFlowersDataset(Dataset):
                  target_transform=None,
                  force_download=False,
                  categories_subset=None):
+        """
+        :param root_dir: (string) the directory where the dataset will be stored
+        :param split: (string) 'train', 'trainval', 'val' or 'test'
+        :param transform: how to transform the input
+        :param target_transform: how to transform the target
+        :param force_download: (boolean) force a new download of the dataset
+        :param categories_subset: (iterable) specify a subset of categories to build this set from
+        """
+
+        super(OxfordFlowersDataset, self).__init__()
 
         # set instance variables
         self.root_dir = join(os.path.expanduser(root_dir), self.sub_root_dir)
@@ -72,7 +82,7 @@ class OxfordFlowersDataset(Dataset):
                 and os.path.exists(join(self.root_dir, 'setid.mat')):
             if not force and len(os.listdir(join(self.root_dir, 'jpg'))) == 8189:
                 print('Files already downloaded and verified')
-                return None
+                return
             else:
                 shutil.rmtree(self.root_dir)
 
@@ -93,14 +103,10 @@ class OxfordFlowersDataset(Dataset):
         filename = 'setid.mat'
         url = join(self.download_url_prefix, filename)
         download_url(url, self.root_dir, filename, None)
-        return None
+
 
     def load_data_split(self, categories_subset=None):
-        """
-        sets categories, categories_to_labels,
-        :param categories_subset: if not None only include the categories listed in this iterable
-        :return:
-        """
+
         # assert we can do this split
         assert self.split in ['train', 'val', 'test']
 
@@ -147,8 +153,10 @@ class OxfordFlowersDataset(Dataset):
 
         return list(zip(data, labels))
 
-    def load_img(self, path):
+    @staticmethod
+    def load_img(path):
 
+        # todo either turn image to tensor in transform or do here
         # Load the image
         ImageFile.LOAD_TRUNCATED_IMAGES = True
         image = Image.open(path).convert('RGB')
@@ -198,9 +206,9 @@ if __name__ == "__main__":
 
         ax = plt.subplot(1, 4, i + 1)
         plt.tight_layout()
-        ax.set_title('Sample %d - Class %d' % (i, dataset.labels_to_categories[sample[1]]))
+        ax.set_title('Sample %d - Class %d' % (i, dataset.labels_to_categories[sample[1]]))  # convert label to categ.
         ax.axis('off')
-        plt.imshow(sample[0])
+        plt.imshow(sample[0])  # todo when tensor will need to convert tensor to img
 
         if i == 3:
             plt.show()
