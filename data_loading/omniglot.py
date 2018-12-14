@@ -68,21 +68,20 @@ class OmniglotDataset(Dataset):
         self.split = split
         self.transform = transform
         self.target_transform = target_transform
-        self.labels = []
 
         # check if data exists, if not download
         self.download(force=force_download)
 
-        # load the data for this split
-        self.data = self.load_data_split(categories_subset=categories_subset)
-
+        # load the data samples for this split
+        self.data, self.labels, self.categories = self.load_data_split(categories_subset=categories_subset)
+        self.samples = list(zip(self.data, self.labels))
 
     def __len__(self):
-        return len(self.data)
+        return len(self.samples)
 
     def __getitem__(self, index):
         # get the data sample
-        sample_data, sample_target = self.data[index]
+        sample_data, sample_target = self.samples[index]
 
         # load the image
         x = self.load_img(join(self.root_dir, self.data_dir, sample_data[1], sample_data[0]), rotate=sample_data[2][-3:])
@@ -194,7 +193,7 @@ class OmniglotDataset(Dataset):
         for c in categories:
             labels.append(self.categories_to_labels[c])
 
-        return list(zip(data, labels))
+        return data, labels, categories
 
     @staticmethod
     def load_img(path, rotate=0):
@@ -226,13 +225,13 @@ class OmniglotDataset(Dataset):
         counts = self.class_counts()
 
         return "%d samples spanning %d classes (avg %d per class)" % \
-               (len(self.data), len(counts), int(float(len(self.data))/float(len(counts))))
+               (len(self.samples), len(counts), int(float(len(self.samples))/float(len(counts))))
 
     def class_counts(self):
         # calculate the number of samples per category
         counts = {}
-        for index in range(len(self.data)):
-            sample_data, sample_target = self.data[index]
+        for index in range(len(self.samples)):
+            sample_data, sample_target = self.samples[index]
             if sample_target not in counts:
                 counts[sample_target] = 1
             else:
@@ -264,7 +263,7 @@ if __name__ == "__main__":
 
         ax = plt.subplot(1, 4, i + 1)
         plt.tight_layout()
-        ax.set_title('Sample %d - Class %d' % (i, dataset.labels_to_categories[sample[1]]))  # convert label to categ.
+        ax.set_title('Sample %d - Class %s' % (i, dataset.labels_to_categories[sample[1]]))  # convert label to categ.
         ax.axis('off')
         plt.imshow(dataset.tensor_to_image(sample[0]))  # convert tensor to img
 
