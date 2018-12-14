@@ -146,8 +146,11 @@ class OxfordFlowersDataset(Dataset):
 
 
 if __name__ == "__main__":
+    from utils.debug import set_working_dir
     from config.config import config
     import matplotlib.pyplot as plt
+
+    set_working_dir()
 
     dataset = OxfordFlowersDataset(root_dir=config.data.root_dir)
 

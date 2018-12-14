@@ -6,6 +6,7 @@ import numpy as np
 from easydict import EasyDict as edict
 
 config = edict()
+config.project = 'pytorch.repmet'
 
 # Shared Defaults
 config.root_dir = ''
