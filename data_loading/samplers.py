@@ -10,10 +10,10 @@ import torch
 
 class EpisodeBatchSampler(object):
 
-    def __init__(self, labels, categories_per_ep, num_samples, episodes):
+    def __init__(self, labels, categories_per_epi, num_samples, episodes):
         """
         :param labels: iterable containing all the labels for the current dataset (non-uniqued)
-        :param categories_per_ep: number of random categories for each episode
+        :param categories_per_epi: number of random categories for each episode
         :param num_samples: number of samples for each episode for each class
         :param episodes: number of episodes (iterations) per epoch
         """
@@ -22,7 +22,7 @@ class EpisodeBatchSampler(object):
 
         # set instance variables
         self.labels = labels
-        self.categories_per_ep = categories_per_ep
+        self.categories_per_epi = categories_per_epi
         self.sample_per_class = num_samples
         self.episodes = episodes
 
@@ -49,7 +49,7 @@ class EpisodeBatchSampler(object):
         yield a batch of indexes
         """
         spc = self.sample_per_class
-        cpi = self.categories_per_ep
+        cpi = self.categories_per_epi
 
         for it in range(self.episodes):
             batch_size = spc * cpi
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     dataset = OmniglotDataset(root_dir=config.data.root_dir)
 
     # setup the the sampler
-    sampler = EpisodeBatchSampler(labels=dataset.labels, categories_per_ep=12, num_samples=4, episodes=3)
+    sampler = EpisodeBatchSampler(labels=dataset.labels, categories_per_epi=12, num_samples=4, episodes=3)
 
     # setup the dataloader
     dataloader = torch.utils.data.DataLoader(dataset, batch_sampler=sampler)
