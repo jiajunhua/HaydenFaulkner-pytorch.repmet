@@ -18,13 +18,17 @@ import torch
 import torchvision
 import torch.backends.cudnn as cudnn
 
+from tensorboardX import SummaryWriter
+from datetime import datetime
 
 from config.config import config, update_config, check_config
 from utils.logging.logger import initialize_logger
 
+
 from model_definitions.initialize import initialize_model
 from data_loading.initialize import initialize_dataset, initialize_sampler
 from losses.initialize import initialize_loss
+from callbacks.tensorboard import TensorBoard
 
 # from magnet_loss import MagnetLoss
 # from repmet_loss import RepMetLoss, RepMetLoss2, RepMetLoss3
@@ -147,7 +151,10 @@ def train(args):
     #     callbacks['batch_end'] = [[100, callback.TensorBoard(tboard_log)],
     #                               [100, callback.EmbGrapher(tboard_log, data=train_data_classwise, class_names=classmap, frequent=1000, model_background=config.MODEL_BACKGROUND)]]
     # else:
-    #     callbacks['batch_end'] = [[100, callback.TensorBoard(tboard_log)]]
+    current_time = datetime.now().strftime('%b%d_%H-%M-%S')
+    tb_sw = SummaryWriter(log_dir=os.path.join(save_path, 'tb', current_time))
+    callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
+    callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
     #
     # if config.TRAIN.kmeans != 0:
     #     callbacks[0] = [callback.RepsKMeans(data=train_data_classwise, k=config.TRAIN.k, n_classes=config.dataset.NUM_CLASSES,
@@ -834,6 +841,7 @@ def fit(config,
     best_state = model.state_dict()
     best_acc = 0
 
+    step = 0
     for epoch in range(config.train.epochs):  # or epochs?
         print('Episode {}/{}'.format(epoch, config.train.epochs - 1))
         print('-' * 10)
@@ -841,6 +849,7 @@ def fit(config,
         model.train()
 
         # Iterate over data.
+        batch = 0
         for inputs, labels in dataloaders['train']:  # this gets a batch
             inputs = inputs.to(device)
             labels = labels.to(device)
@@ -870,6 +879,13 @@ def fit(config,
             train_loss.append(loss.item())
             train_acc.append(acc.item())
 
+            for callback in callbacks['batch_end']:
+                callback(epoch, batch, step, model, stats={'Training Loss': train_loss[-1],
+                                                           'Training Acc': train_acc[-1]})
+
+            batch += 1
+            step += 1
+
         avg_loss = np.mean(train_loss[-config.train.episodes:])
         avg_acc = np.mean(train_acc[-config.train.episodes:])
 
@@ -894,6 +910,10 @@ def fit(config,
 
             avg_loss = np.mean(val_loss[-config.train.episodes:])
             avg_acc = np.mean(val_acc[-config.train.episodes:])
+
+            for callback in callbacks['epoch_end']:
+                callback(epoch, batch, step, model, stats={'Avg Validation Loss': avg_loss,
+                                                           'Avg Validation Acc': avg_acc})
 
             print('Avg Validation Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
 
