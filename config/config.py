@@ -5,35 +5,63 @@ import yaml
 import numpy as np
 from easydict import EasyDict as edict
 
+# Project Setup
 config = edict()
 config.project = 'pytorch.repmet'
 config.seed = 7
-# Shared Defaults
-config.root_dir = ''
-config.run_id = ''
-
 config.gpus = ''
+
+# Shared Defaults
+config.run_id = None
+
 
 config.emb_dim = 256
 
 # Model Defaults
 config.model = edict()
-config.model.id = None
-config.model.type = None
 config.model.root_dir = 'models'
+config.model.type = None
+config.model.id = None
 
 config.model.backbone = edict()
 config.model.backbone.name = ''  # What model spec to use for the backbone, if backbone nec
 config.model.backbone.out_layer = ''  # What layer do we take from the backbone net
 
-# Data Defaults
-config.data = edict()
-config.data.id = None
-config.data.root_dir = 'data'
+# Dataset Defaults
+config.dataset = edict()
+config.dataset.root_dir = 'data'
+config.dataset.name = None
+config.dataset.id = None
 
 # Train Defaults
 config.train = edict()
-config.train.dml = False  # Use embedding networks? Baselines are false  # TODO does this go in model config?
+config.train.sampler = None
+config.train.loss = None
+
+config.train.epochs = None
+config.train.learning_rate = None
+config.train.lr_scheduler_gamma = ''
+config.train.lr_scheduler_step = ''
+
+config.train.episodes = ''
+config.train.categories_per_epi = ''
+config.train.support_per_epi = ''
+config.train.query_per_epi = ''
+
+# Validation Defaults
+config.val = edict()
+config.val.every = 0  # 0 is never
+
+config.val.episodes = ''
+config.val.categories_per_epi = ''
+config.val.support_per_epi = ''
+config.val.query_per_epi = ''
+
+# Visualisation Defaults
+config.vis = edict()
+config.vis.every = 0  # 0 is never
+
+# config.train.dml = False  # Use embedding networks? Baselines are false  # TODO does this go in model config?
 
 # Test Defaults
 config.test = edict()
@@ -266,7 +294,6 @@ config.test = edict()
 
 
 def update_config(config_file):
-    exp_config = None
     with open(config_file) as f:
         exp_config = edict(yaml.load(f))
         for k, v in exp_config.items():
@@ -287,6 +314,7 @@ def update_config(config_file):
                         config[k] = v
             else:
                 raise ValueError("key (%s) must exist in config.py" % k)
+
 
 def check_config(in_config, k=''):
     # recursive function to check for no Nones...

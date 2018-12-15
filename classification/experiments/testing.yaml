@@ -1,6 +1,40 @@
-run_id: 'tester'
+run_id: 'tester-01'
+
 
 model:
+  type: 'protonet'
   id: '01'
-  path: "./models/01"
+  use_pretrained: False
 
+
+dataset:
+  name: 'omniglot'
+  id: '00'
+
+
+train:
+  sampler: 'episodes'
+  loss: 'prototypical'
+
+  epochs: 100
+  learning_rate: 0.001
+  lr_scheduler_gamma: 0.5
+  lr_scheduler_step: 20
+
+  episodes: 100  # per epoch
+  categories_per_epi: 60
+  support_per_epi: 5
+  query_per_epi: 5
+
+
+val:
+  every: 1  # run validation every x epochs
+
+  episodes: 100  # per epoch
+  categories_per_epi: 5
+  support_per_epi: 5
+  query_per_epi: 15
+
+
+vis:
+  every: 1  # update tensorboard every x epochs
