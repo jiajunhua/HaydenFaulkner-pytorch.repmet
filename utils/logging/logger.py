@@ -3,9 +3,9 @@ import logging
 import time
 
 
-def create_logger(save_path, run_id):
+def initialize_logger(save_path, run_id):
     """
-    create a logger object
+    initialize a logger object
     :param save_path: the path to save the log file
     :param run_id: the id of the run
     :return: the logger
