@@ -7,7 +7,7 @@ from easydict import EasyDict as edict
 
 config = edict()
 config.project = 'pytorch.repmet'
-
+config.seed = 7
 # Shared Defaults
 config.root_dir = ''
 config.run_id = ''
@@ -18,7 +18,8 @@ config.emb_dim = 256
 
 # Model Defaults
 config.model = edict()
-config.model.id = ''
+config.model.id = None
+config.model.type = None
 config.model.root_dir = 'models'
 
 config.model.backbone = edict()
@@ -27,7 +28,7 @@ config.model.backbone.out_layer = ''  # What layer do we take from the backbone 
 
 # Data Defaults
 config.data = edict()
-config.data.id = ''
+config.data.id = None
 config.data.root_dir = 'data'
 
 # Train Defaults
@@ -285,4 +286,13 @@ def update_config(config_file):
                     else:
                         config[k] = v
             else:
-                raise ValueError("key must exist in config.py")
+                raise ValueError("key (%s) must exist in config.py" % k)
+
+def check_config(in_config, k=''):
+    # recursive function to check for no Nones...
+    # All default Nones need to be specified in experimental .yaml files
+    for ki, vi in in_config.items():
+        if isinstance(vi, edict):
+            check_config(vi, k+'.'+ki)
+        elif vi is None:
+            raise ValueError("%s must be specified in the .yaml config file" % (k+'.'+ki))
