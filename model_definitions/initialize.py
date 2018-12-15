@@ -2,9 +2,9 @@ import torch.nn as nn
 from torchvision import models
 
 from model_definitions.others.encoder import Encoder
+from model_definitions.cnns.basics.protonet import ProtoNet
 
-
-def initialize_model(config, model_name, use_pretrained=True, use_dml=True):
+def initialize_model(config, model_name, model_id):
     # Initialize these variables which will be set in this if statement. Each of these
     #   variables is model specific.
     input_size = 0
@@ -13,7 +13,7 @@ def initialize_model(config, model_name, use_pretrained=True, use_dml=True):
     if model_name == "resnet":
         """ Resnet18
         """
-        model = models.resnet18(pretrained=use_pretrained)
+        model = models.resnet18(pretrained=config.model.use_pretrained)
         freeze_params(model)
         output_size = model.fc.in_features
         
@@ -24,7 +24,7 @@ def initialize_model(config, model_name, use_pretrained=True, use_dml=True):
     elif model_name == "alexnet":
         """ Alexnet
         """
-        model = models.alexnet(pretrained=use_pretrained)
+        model = models.alexnet(pretrained=config.model.use_pretrained)
         freeze_params(model)
         output_size = model.classifier[6].in_features
         
@@ -35,7 +35,7 @@ def initialize_model(config, model_name, use_pretrained=True, use_dml=True):
     elif model_name == "vgg":
         """ VGG11_bn
         """
-        model = models.vgg11_bn(pretrained=use_pretrained)
+        model = models.vgg11_bn(pretrained=config.model.use_pretrained)
         output_size = model.classifier[6].in_features
         
         # model.classifier[6] = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)  # nn.Linear(output_size, num_classes)
@@ -45,7 +45,7 @@ def initialize_model(config, model_name, use_pretrained=True, use_dml=True):
     elif model_name == "squeezenet":
         """ Squeezenet
         """
-        model = models.squeezenet1_0(pretrained=use_pretrained)
+        model = models.squeezenet1_0(pretrained=config.model.use_pretrained)
         freeze_params(model)
         output_size = 512
         
@@ -57,7 +57,7 @@ def initialize_model(config, model_name, use_pretrained=True, use_dml=True):
     elif model_name == "densenet":
         """ Densenet
         """
-        model = models.densenet121(pretrained=use_pretrained)
+        model = models.densenet121(pretrained=config.model.use_pretrained)
         freeze_params(model)
         output_size = model.classifier.in_features
         
@@ -68,7 +68,7 @@ def initialize_model(config, model_name, use_pretrained=True, use_dml=True):
         """ Inception v3
         Be careful, expects (299,299) sized images and has auxiliary output
         """
-        model = models.inception_v3(pretrained=use_pretrained)
+        model = models.inception_v3(pretrained=config.model.use_pretrained)
         freeze_params(model)
         # Handle the auxilary net
         output_size = model.AuxLogits.fc.in_features
@@ -78,6 +78,12 @@ def initialize_model(config, model_name, use_pretrained=True, use_dml=True):
         model.fc = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)  # nn.Linear(output_size, num_classes)
         input_size = 299
 
+    elif model_name == "protonet":
+        if model_id == '01':
+            input_size = 28
+            output_size = 64
+
+            model = ProtoNet(x_dim=1, hid_dim=64, z_dim=output_size)
     else:
         print("Invalid model name, exiting...")
         exit()
@@ -94,9 +100,9 @@ def freeze_params(model, params=None, verbose=True):
                     print(name, " was frozen")
             freeze_params(child)
 
-def _test():
-    model = initialize_model(None, "resnet", use_pretrained=True, use_dml=True)
-    print(model)
+# def _test():
+    # model = initialize_model(None, "resnet")
+    # print(model)
 
-if __name__ == '__main__':
-    _test()
+# if __name__ == '__main__':
+    # _test()
