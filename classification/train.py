@@ -12,14 +12,19 @@ import copy
 import pprint
 import argparse
 
+import numpy as np
+
 import torch
 import torchvision
 import torch.backends.cudnn as cudnn
 
 
-from config.config import config, update_config
-from utils.logging.logger import create_logger
-from model_definitions.initialize import get_model, load_model
+from config.config import config, update_config, check_config
+from utils.logging.logger import initialize_logger
+
+from model_definitions.initialize import initialize_model
+from data_loading.initialize import initialize_dataset, initialize_sampler
+from losses.initialize import initialize_loss
 
 # from magnet_loss import MagnetLoss
 # from repmet_loss import RepMetLoss, RepMetLoss2, RepMetLoss3
@@ -39,8 +44,6 @@ def parse_args():
     parser.add_argument('--cfg', help='experiment configure file name', required=True, type=str)
 
     args, rest = parser.parse_known_args()
-    # update config
-    update_config(args.cfg)
 
     return args
 
@@ -57,64 +60,111 @@ def train(args):
           # chunk_size=32,
           # refresh_clusters=50,
           # norm_clusters=False,
-          # calc_acc_every=10,
-          # load_latest=True,
-          # save_every=200,
-          # save_path='',#configs.general.paths.models,
-          # plot_every=100,
-          # plots_path='',#configs.general.paths.graphing,
-          # plots_ext='.png',
-          # n_plot_samples=10,
-          # n_plot_classes=10):
 
-    # mx.random.seed(3)
-    # np.random.seed(3)
 
-    # Setup the paths adn dirs
-    save_path = os.path.join(config.model.path, config.run_id)
+    # if torch.cuda.is_available() and not config.cuda:
+    #     print("WARNING: You have a CUDA device, so you should probably run with --cuda")
+
+    # setup seeds
+    np.random.seed(config.seed)
+    torch.manual_seed(config.seed)
+    torch.cuda.manual_seed(config.seed)
+
+    # Setup the paths and dirs
+    save_path = os.path.join(config.model.root_dir, config.model.type, config.model.id, config.run_id)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     assert os.path.exists(save_path), '{} does not exist'.format(save_path)
 
     # Setup the logger
-    logger = create_logger(config)
+    logger = initialize_logger(save_path=save_path, run_id=config.run_id)
     pprint.pprint(config)
     logger.info('training config:{}\n'.format(pprint.pformat(config)))
 
+    #################### MODEL ########################
     # Load the model definition
-    model = get_model()
+    model, input_size, output_size = initialize_model(config=config,
+                                                      model_name=config.model.type,
+                                                      model_id=config.model.id)
+    model = model.to(device)
 
     # Load model params
 
     # Use the GPU and Parallel it
-    net = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
-    net.cuda()
+    model = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
+    model.cuda()
     cudnn.benchmark = True
 
+    #################### DATA ########################
     # Load set and get train and test labels from datasets
-    train_dataset, test_dataset = load_datasets(set_name, input_size=input_size)#299 for inception
-    train_y = get_labels(train_dataset)
-    test_y = get_labels(test_dataset)
 
-    # Setup Loss
+    datasets = {}
+    datasets['train'] = initialize_dataset(config=config,
+                                           dataset_name=config.dataset.name,
+                                           dataset_id=config.dataset.id,
+                                           split='train')
+    datasets['val'] = initialize_dataset(config=config,
+                                         dataset_name=config.dataset.name,
+                                         dataset_id=config.dataset.id,
+                                         split='val')
 
+    samplers = {}
+    samplers['train'] = initialize_sampler(config=config,
+                                           sampler_name=config.train.sampler,
+                                           dataset=datasets['train'],
+                                           split='train')
+    samplers['val'] = initialize_sampler(config=config,
+                                         sampler_name=config.train.sampler,
+                                         dataset=datasets['val'],
+                                         split='val')
 
-    # Setup Criterion
+    dataloaders = {}
+    dataloaders['train'] = torch.utils.data.DataLoader(datasets['train'], batch_sampler=samplers['train'])
+    dataloaders['val'] = torch.utils.data.DataLoader(datasets['val'], batch_sampler=samplers['val'])
 
+    #################### LOSSES + METRICS ######################
+    # Setup losses
+    losses = {}
+    losses['train'] = initialize_loss(config=config,
+                                      loss_name=config.train.loss,
+                                      split='train')
+    losses['val'] = initialize_loss(config=config,
+                                    loss_name=config.train.loss,
+                                    split='val')
+
+    # Setup Optimizer
+    optimizer = torch.optim.Adam(params=model.parameters(),
+                                 lr=config.train.learning_rate)
+
+    torch.optim.lr_scheduler.StepLR(optimizer=optimizer,
+                                    gamma=config.train.lr_scheduler_gamma,
+                                    step_size=config.train.lr_scheduler_step)
+
+    ################### CALLBACKS #####################
     # Setup Callbacks
-    callbacks = {} # episode start, episode end, batch start, batch end, best model
-    if config.DML:
-        callbacks['batch_end'] = [[100, callback.TensorBoard(tboard_log)],
-                                  [100, callback.EmbGrapher(tboard_log, data=train_data_classwise, class_names=classmap, frequent=1000, model_background=config.MODEL_BACKGROUND)]]
-    else:
-        callbacks['batch_end'] = [[100, callback.TensorBoard(tboard_log)]]
+    callbacks = {} # ep start, ep end, batch start, batch end, best model
+    # if config.DML:
+    #     callbacks['batch_end'] = [[100, callback.TensorBoard(tboard_log)],
+    #                               [100, callback.EmbGrapher(tboard_log, data=train_data_classwise, class_names=classmap, frequent=1000, model_background=config.MODEL_BACKGROUND)]]
+    # else:
+    #     callbacks['batch_end'] = [[100, callback.TensorBoard(tboard_log)]]
+    #
+    # if config.TRAIN.kmeans != 0:
+    #     callbacks[0] = [callback.RepsKMeans(data=train_data_classwise, k=config.TRAIN.k, n_classes=config.dataset.NUM_CLASSES,
+    #                                                 emb_size=config.EMBEDDING_SIZE, max_per_class=5,
+    #                                                 frequent=config.TRAIN.kmeans, model_background=config.MODEL_BACKGROUND)]
+    #
+    # callbacks[1] = [callback.module_checkpoint(mod, prefix, period=1, save_optimizer_states=True)]
 
-    if config.TRAIN.kmeans != 0:
-        callbacks[0] = [callback.RepsKMeans(data=train_data_classwise, k=config.TRAIN.k, n_classes=config.dataset.NUM_CLASSES,
-                                                    emb_size=config.EMBEDDING_SIZE, max_per_class=5,
-                                                    frequent=config.TRAIN.kmeans, model_background=config.MODEL_BACKGROUND)]
 
-    callbacks[1] = [callback.module_checkpoint(mod, prefix, period=1, save_optimizer_states=True)]
+    fit(config=config,
+        model=model,
+        dataloaders=dataloaders,
+        losses=losses,
+        optimizer=optimizer,
+        callbacks=callbacks,
+        lr_scheduler=None,
+        is_inception=False)
 #
 #     # make list of cluster refresh if given an interval int
 #     if isinstance(refresh_clusters, int):
@@ -764,25 +814,34 @@ def train(args):
     # """
 
 
-def fit(model, dataloaders, criterion, optimizer, callbacks, num_episodes, validate_every=-1, is_inception=False):
+def fit(config,
+        model,
+        dataloaders,
+        losses,
+        optimizer,
+        callbacks,
+        lr_scheduler=None,
+        is_inception=False):
+
     since = time.time()
 
-    val_acc_history = []
+    train_loss = []
+    train_acc = []
+    val_loss = []
+    val_acc = []
 
-    best_model_wts = copy.deepcopy(model.state_dict())
-    best_acc = 0.0
+    # best_state = copy.deepcopy(model.state_dict())
+    best_state = model.state_dict()
+    best_acc = 0
 
-    for episode in range(num_episodes): # or epochs?
-        print('Episode {}/{}'.format(episode, num_episodes - 1))
+    for epoch in range(config.train.epochs):  # or epochs?
+        print('Episode {}/{}'.format(epoch, config.train.epochs - 1))
         print('-' * 10)
 
         model.train()
 
-        running_loss = 0.0
-        running_corrects = 0
-
         # Iterate over data.
-        for inputs, labels in dataloaders['train']:
+        for inputs, labels in dataloaders['train']:  # this gets a batch
             inputs = inputs.to(device)
             labels = labels.to(device)
 
@@ -790,58 +849,58 @@ def fit(model, dataloaders, criterion, optimizer, callbacks, num_episodes, valid
             optimizer.zero_grad()
 
             # forward
-            # track history
-            with torch.set_grad_enabled(True):
-                # Get model outputs and calculate loss
-                # backward + optimize
-                if is_inception:
-                    # From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
-                    outputs, aux_outputs = model(inputs)
-                    loss1 = criterion(outputs, labels)
-                    loss2 = criterion(aux_outputs, labels)
-                    loss = loss1 + 0.4 * loss2
-                else:
-                    outputs = model(inputs)
-                    loss = criterion(outputs, labels)
+            # Get model outputs and calculate loss
+            # backward + optimize
+            # if is_inception:
+            #     # From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
+            #     outputs, aux_outputs = model(inputs)
+            #     loss1 = losses(outputs, labels)
+            #     loss2 = losses(aux_outputs, labels)
+            #     loss = loss1 + 0.4 * loss2
+            # else:
+            #     outputs = model(inputs)
+            #     loss = losses(input=outputs, target=labels)
+            outputs = model(inputs)
+            loss, acc = losses['train'](input=outputs, target=labels)
 
-                _, preds = torch.max(outputs, 1)
+            loss.backward()
+            optimizer.step()
 
             # statistics
-            running_loss += loss.item() * inputs.size(0)
-            running_corrects += torch.sum(preds == labels.data)
+            train_loss.append(loss.item())
+            train_acc.append(acc.item())
 
-        episode_loss = running_loss / len(dataloaders['train'].dataset)
-        episode_acc = running_corrects.double() / len(dataloaders['train'].dataset)
+        avg_loss = np.mean(train_loss[-config.train.episodes:])
+        avg_acc = np.mean(train_acc[-config.train.episodes:])
 
-        print('Training Loss: {:.4f} Acc: {:.4f}'.format(episode_loss, episode_acc))
+        print('Avg Training Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
+        if lr_scheduler:
+            lr_scheduler.step()
 
-        if episode % validate_every == 0:
+        if config.val.every > 0 and epoch % config.val.every == 0:
             model.eval()
             for inputs, labels in dataloaders['val']:
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
-                with torch.set_grad_enabled(False):
-                    # Get model outputs and calculate loss
-                    outputs = model(inputs)
-                    loss = criterion(outputs, labels)
-
-                    _, preds = torch.max(outputs, 1)
+                # with torch.set_grad_enabled(False):  # todo do we need the set grad? or does the zero handle this before the next backward call?
+                # Get model outputs and calculate loss
+                outputs = model(inputs)
+                loss, acc = losses['val'](input=outputs, target=labels)
 
                 # statistics
-                running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(preds == labels.data)
+                val_loss.append(loss.item())
+                val_acc.append(acc.item())
 
-            episode_loss = running_loss / len(dataloaders['val'].dataset)
-            episode_acc = running_corrects.double() / len(dataloaders['val'].dataset)
+            avg_loss = np.mean(val_loss[-config.train.episodes:])
+            avg_acc = np.mean(val_acc[-config.train.episodes:])
 
-            print('Validation Loss: {:.4f} Acc: {:.4f}'.format(episode_loss, episode_acc))        # deep copy the model
+            print('Avg Validation Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
 
-            if episode_acc > best_acc:
-                best_acc = episode_acc
-                best_model_wts = copy.deepcopy(model.state_dict())
-
-            val_acc_history.append(episode_acc)
+            if avg_acc > best_acc:
+                best_acc = avg_acc
+                # best_state = copy.deepcopy(model.state_dict())
+                best_state = model.state_dict()
 
         print()
 
@@ -850,13 +909,17 @@ def fit(model, dataloaders, criterion, optimizer, callbacks, num_episodes, valid
     print('Best val Acc: {:4f}'.format(best_acc))
 
     # load best model weights
-    model.load_state_dict(best_model_wts)
-    return model, val_acc_history
+    model.load_state_dict(best_state)  # todo do we need the deepcopys and reload?
+    return model, best_state, best_acc, train_loss, train_acc, val_loss, val_acc
 
 
 def main():
     print('Called with argument:', args)
+    # update config
+    update_config(args.cfg)
+    check_config(config)
     train(args)
+
 
 if __name__ == '__main__':
     main()
