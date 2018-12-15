@@ -250,7 +250,7 @@ if __name__ == "__main__":
     set_working_dir()
 
     # load the dataset
-    dataset = OmniglotDataset(root_dir=config.data.root_dir)
+    dataset = OmniglotDataset(root_dir=config.dataset.root_dir)
 
     # print the stats
     print(dataset.stats())

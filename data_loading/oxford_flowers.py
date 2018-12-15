@@ -200,7 +200,7 @@ if __name__ == "__main__":
     set_working_dir()
 
     # load the dataset
-    dataset = OxfordFlowersDataset(root_dir=config.data.root_dir, categories_subset=[1, 2, 34])
+    dataset = OxfordFlowersDataset(root_dir=config.dataset.root_dir, categories_subset=[1, 2, 34])
 
     # print the stats
     print(dataset.stats())
