@@ -83,6 +83,7 @@ These results are calculated with `classification/evaluate.py`
 | `.yaml` file     | `protonets_1_5` | `protonets_5_5` | `protonets_1_20` | `protonets_5_20` |
 | *Original Paper* |           98.8% |           99.7% |            96.0% |            98.9% |
 | *This Code* *    |          98.47% |          99.59% |           94.58% |           98.37% |
+
 *One test run of 500 episodes
 
 ### Magnet Loss
