@@ -115,7 +115,7 @@ def train():
                                            dataset=datasets['train'],
                                            split='train')
     samplers['val'] = initialize_sampler(config=config,
-                                         sampler_name=config.train.sampler,
+                                         sampler_name=config.val.sampler,
                                          dataset=datasets['val'],
                                          split='val')
 
@@ -130,7 +130,7 @@ def train():
                                       loss_name=config.train.loss,
                                       split='train')
     losses['val'] = initialize_loss(config=config,
-                                    loss_name=config.train.loss,
+                                    loss_name=config.val.loss,
                                     split='val')
 
     # Setup Optimizer
