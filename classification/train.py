@@ -28,7 +28,7 @@ from utils.logging.logger import initialize_logger
 from model_definitions.initialize import initialize_model
 from data_loading.initialize import initialize_dataset, initialize_sampler
 from losses.initialize import initialize_loss
-from callbacks.tensorboard import TensorBoard
+from callbacks.tensorboard import TensorBoard, EmbeddingGrapher
 
 # from magnet_loss import MagnetLoss
 # from repmet_loss import RepMetLoss, RepMetLoss2, RepMetLoss3
@@ -53,7 +53,7 @@ def parse_args():
 
 args = parse_args()
 
-def train(args):
+def train():
           # set_name,
           # model_name,
           # loss_type,
@@ -64,10 +64,6 @@ def train(args):
           # chunk_size=32,
           # refresh_clusters=50,
           # norm_clusters=False,
-
-
-    # if torch.cuda.is_available() and not config.cuda:
-    #     print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
     # setup seeds
     np.random.seed(config.seed)
@@ -146,15 +142,15 @@ def train(args):
 
     ################### CALLBACKS #####################
     # Setup Callbacks
-    callbacks = {} # ep start, ep end, batch start, batch end, best model
-    # if config.DML:
-    #     callbacks['batch_end'] = [[100, callback.TensorBoard(tboard_log)],
-    #                               [100, callback.EmbGrapher(tboard_log, data=train_data_classwise, class_names=classmap, frequent=1000, model_background=config.MODEL_BACKGROUND)]]
-    # else:
-    current_time = datetime.now().strftime('%b%d_%H-%M-%S')
-    tb_sw = SummaryWriter(log_dir=os.path.join(save_path, 'tb', current_time))
+    callbacks = {}
+    current_time = datetime.now().strftime('%Y-%m-%d-%H-%M')
+    tb_sw = SummaryWriter(log_dir=os.path.join(save_path, 'tb', current_time), comment=config.run_id)
+
     callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
-    callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
+    callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
+                              EmbeddingGrapher(every=config.vis.every, tb_sw=tb_sw, tag='train', label_image=True)]
+    callbacks['validation_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
+                                   EmbeddingGrapher(every=config.vis.every, tb_sw=tb_sw, tag='val', label_image=True)]
     #
     # if config.TRAIN.kmeans != 0:
     #     callbacks[0] = [callback.RepsKMeans(data=train_data_classwise, k=config.TRAIN.k, n_classes=config.dataset.NUM_CLASSES,
@@ -842,15 +838,15 @@ def fit(config,
     best_acc = 0
 
     step = 0
-    for epoch in range(config.train.epochs):  # or epochs?
-        print('Episode {}/{}'.format(epoch, config.train.epochs - 1))
+    for epoch in range(config.train.epochs):
+        print('Epoch {}/{}'.format(epoch, config.train.epochs - 1))
         print('-' * 10)
 
         model.train()
 
         # Iterate over data.
         batch = 0
-        for inputs, labels in dataloaders['train']:  # this gets a batch
+        for inputs, labels in dataloaders['train']:  # this gets a batch (or an episode)
             inputs = inputs.to(device)
             labels = labels.to(device)
 
@@ -880,8 +876,9 @@ def fit(config,
             train_acc.append(acc.item())
 
             for callback in callbacks['batch_end']:
-                callback(epoch, batch, step, model, stats={'Training Loss': train_loss[-1],
-                                                           'Training Acc': train_acc[-1]})
+                callback(epoch, batch, step, model,
+                         data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
+                         stats={'Training Loss': train_loss[-1], 'Training Acc': train_acc[-1]})
 
             batch += 1
             step += 1
@@ -892,6 +889,11 @@ def fit(config,
         print('Avg Training Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
         if lr_scheduler:
             lr_scheduler.step()
+
+        for callback in callbacks['epoch_end']:
+            callback(epoch, batch, step, model,
+                     data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
+                     stats={'Avg Training Loss': avg_loss, 'Avg Training Acc': avg_acc})
 
         if config.val.every > 0 and epoch % config.val.every == 0:
             model.eval()
@@ -911,16 +913,17 @@ def fit(config,
             avg_loss = np.mean(val_loss[-config.train.episodes:])
             avg_acc = np.mean(val_acc[-config.train.episodes:])
 
-            for callback in callbacks['epoch_end']:
-                callback(epoch, batch, step, model, stats={'Avg Validation Loss': avg_loss,
-                                                           'Avg Validation Acc': avg_acc})
-
             print('Avg Validation Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
 
             if avg_acc > best_acc:
                 best_acc = avg_acc
                 # best_state = copy.deepcopy(model.state_dict())
                 best_state = model.state_dict()
+
+            for callback in callbacks['validation_end']:
+                callback(epoch, batch, step, model,
+                         data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
+                         stats={'Avg Validation Loss': avg_loss, 'Avg Validation Acc': avg_acc})
 
         print()
 
@@ -934,11 +937,15 @@ def fit(config,
 
 
 def main():
+    from utils.debug import set_working_dir
+    # set the working directory as appropriate
+    set_working_dir()
+
     print('Called with argument:', args)
     # update config
     update_config(args.cfg)
     check_config(config)
-    train(args)
+    train()
 
 
 if __name__ == '__main__':

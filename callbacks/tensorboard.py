@@ -6,22 +6,36 @@ class TensorBoard(object):
         self.every = every
         self.tb_sw = tb_sw
 
-    def __call__(self, epoch, batch, step, model, stats):
+    def __call__(self, epoch, batch, step, model, data, stats):
 
         if batch % self.every == 0:
 
-            # params = param[3]['self'].get_params()[0]  # pull params onto cpu (into the arg_params variable (param[3]['self'] is the module)
-            # for k,v in params.items():
-            #     if k[:3] == 'fc_' or k[:3] == 'emb' or k[:3] == 'rpn' or k[:3] == 'bbo' or k[:3] == 'cls' or k[:3] == 'rep':
-            #         try:
-            #             self.tb_log.add_histogram(tag=k,
-            #                                          values=v.asnumpy(),
-            #                                          bins=100,
-            #                                          global_step=self.iter)
-            #         except ValueError:
-            #             print("ValueError: range parameter must be finite: %s min: %f  max: %f" % (str(k), np.min(v.asnumpy()), np.max(v.asnumpy())))
-            #             print("You should really consider stopping training...")
-            # if param.eval_metric is not None:
-            #     name, value = param.eval_metric.get()
+            if step < 3:  # todo grapher not working
+                self.tb_sw.add_graph(model(data['inputs']), data['inputs'])
+
+            for name, param in model.named_parameters():
+                self.tb_sw.add_histogram(tag=name, values=param.clone().cpu().data.numpy(), global_step=step)
+
             for k, v in stats.items():
                 self.tb_sw.add_scalar(tag=k, scalar_value=v, global_step=step)
+
+
+class EmbeddingGrapher(object):
+
+    def __init__(self, every, tb_sw, tag, label_image=False):
+        self.every = every
+        self.tb_sw = tb_sw
+        self.tag = tag
+        self.label_image = label_image
+
+    def __call__(self, epoch, batch, step, model, data, stats):
+
+        if batch % self.every == 0:
+            inputs = data['inputs']
+            outputs = data['outputs']
+            labels = data['labels'].cpu().detach().numpy()
+
+            if self.label_image:
+                self.tb_sw.add_embedding(outputs, metadata=labels, label_img=inputs, global_step=step, tag=self.tag)
+            else:
+                self.tb_sw.add_embedding(outputs, metadata=labels, global_step=step, tag=self.tag)
