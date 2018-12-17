@@ -23,12 +23,13 @@ from datetime import datetime
 
 from config.config import config, update_config, check_config
 from utils.logging.logger import initialize_logger
-
+from utils.checkpointing import save_checkpoint, load_checkpoint
 
 from model_definitions.initialize import initialize_model
 from data_loading.initialize import initialize_dataset, initialize_sampler
 from losses.initialize import initialize_loss
 from callbacks.tensorboard import TensorBoard, EmbeddingGrapher
+
 
 # from magnet_loss import MagnetLoss
 # from repmet_loss import RepMetLoss, RepMetLoss2, RepMetLoss3
@@ -561,7 +562,8 @@ def fit(config,
         optimizer,
         callbacks,
         lr_scheduler=None,
-        is_inception=False):
+        is_inception=False,
+        resume_from='L'):
 
     since = time.time()
 
@@ -571,11 +573,20 @@ def fit(config,
     val_acc = []
 
     # best_state = copy.deepcopy(model.state_dict())
-    best_state = model.state_dict()
-    best_acc = 0
+    # best_state = model.state_dict()
+    # best_acc = 0
+    #
+    # start_epoch = 0
+
+    # Load Checkpoint?
+    start_epoch, best_acc, model, optimizer = load_checkpoint(config=config,
+                                                              resume_from=resume_from,
+                                                              model=model,
+                                                              optimizer=optimizer)
+
 
     step = 0
-    for epoch in range(config.train.epochs):
+    for epoch in range(start_epoch, config.train.epochs):
         print('Epoch {}/{}'.format(epoch, config.train.epochs - 1))
         print('-' * 10)
 
@@ -627,40 +638,49 @@ def fit(config,
         if lr_scheduler:
             lr_scheduler.step()
 
-        for callback in callbacks['epoch_end']:
-            callback(epoch, batch, step, model,
-                     data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
-                     stats={'Avg Training Loss': avg_loss, 'Avg Training Acc': avg_acc})
-
+        # Validation?
         if config.val.every > 0 and epoch % config.val.every == 0:
             model.eval()
-            for inputs, labels in dataloaders['val']:
-                inputs = inputs.to(device)
-                labels = labels.to(device)
+            for v_inputs, v_labels in dataloaders['val']:
+                v_inputs = v_inputs.to(device)
+                v_labels = v_labels.to(device)
 
                 # with torch.set_grad_enabled(False):  # todo do we need the set grad? or does the zero handle this before the next backward call?
                 # Get model outputs and calculate loss
-                outputs = model(inputs)
-                loss, acc = losses['val'](input=outputs, target=labels)
+                v_outputs = model(v_inputs)
+                loss, acc = losses['val'](input=v_outputs, target=v_labels)
 
                 # statistics
                 val_loss.append(loss.item())
                 val_acc.append(acc.item())
 
-            avg_loss = np.mean(val_loss[-config.train.episodes:])
-            avg_acc = np.mean(val_acc[-config.train.episodes:])
+            avg_v_loss = np.mean(val_loss[-config.train.episodes:])
+            avg_v_acc = np.mean(val_acc[-config.train.episodes:])
 
             print('Avg Validation Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
 
-            if avg_acc > best_acc:
-                best_acc = avg_acc
+            # Best validation accuracy yet?
+            if avg_v_acc > best_acc:
+                best_acc = avg_v_acc
                 # best_state = copy.deepcopy(model.state_dict())
                 best_state = model.state_dict()
+                save_checkpoint(config, epoch, model, optimizer, best_acc, is_best=True)
 
+            # End of validation callbacks
             for callback in callbacks['validation_end']:
                 callback(epoch, batch, step, model,
-                         data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
-                         stats={'Avg Validation Loss': avg_loss, 'Avg Validation Acc': avg_acc})
+                         data={'inputs': v_inputs, 'outputs': v_outputs, 'labels': v_labels},
+                         stats={'Avg Validation Loss': avg_v_loss, 'Avg Validation Acc': avg_v_acc})
+
+        # End of epoch callbacks
+        for callback in callbacks['epoch_end']:
+            callback(epoch, batch, step, model,
+                     data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
+                     stats={'Avg Training Loss': avg_loss, 'Avg Training Acc': avg_acc})
+
+        # Checkpoint?
+        if config.train.checkpoint_every > 0 and epoch % config.train.checkpoint_every == 0:
+            save_checkpoint(config, epoch, model, optimizer, best_acc, is_best=False)
 
         print()
 
@@ -668,8 +688,6 @@ def fit(config,
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Best val Acc: {:4f}'.format(best_acc))
 
-    # load best model weights
-    model.load_state_dict(best_state)  # todo do we need the deepcopys and reload?
     return model, best_state, best_acc, train_loss, train_acc, val_loss, val_acc
 
 
