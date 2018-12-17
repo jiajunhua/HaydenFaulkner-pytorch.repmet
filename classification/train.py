@@ -98,7 +98,7 @@ def train():
     #################### DATA ########################
     # Load set and get train and test labels from datasets
 
-    datasets = {}
+    datasets = dict()
     datasets['train'] = initialize_dataset(config=config,
                                            dataset_name=config.dataset.name,
                                            dataset_id=config.dataset.id,
@@ -108,7 +108,7 @@ def train():
                                          dataset_id=config.dataset.id,
                                          split='val')
 
-    samplers = {}
+    samplers = dict()
     samplers['train'] = initialize_sampler(config=config,
                                            sampler_name=config.train.sampler,
                                            dataset=datasets['train'],
@@ -118,13 +118,13 @@ def train():
                                          dataset=datasets['val'],
                                          split='val')
 
-    dataloaders = {}
+    dataloaders = dict()
     dataloaders['train'] = torch.utils.data.DataLoader(datasets['train'], batch_sampler=samplers['train'])
     dataloaders['val'] = torch.utils.data.DataLoader(datasets['val'], batch_sampler=samplers['val'])
 
     #################### LOSSES + METRICS ######################
     # Setup losses
-    losses = {}
+    losses = dict()
     losses['train'] = initialize_loss(config=config,
                                       loss_name=config.train.loss,
                                       split='train')
