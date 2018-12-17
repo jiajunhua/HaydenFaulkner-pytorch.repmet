@@ -24,5 +24,10 @@ def initialize_sampler(config, sampler_name, dataset, split):
                                        categories_per_epi=config.val.categories_per_epi,
                                        num_samples=config.val.support_per_epi+config.val.query_per_epi,
                                        episodes=config.val.episodes)
+        elif split == 'test':
+            return EpisodeBatchSampler(labels=dataset.labels,
+                                       categories_per_epi=config.test.categories_per_epi,
+                                       num_samples=config.test.support_per_epi+config.test.query_per_epi,
+                                       episodes=config.test.episodes)
         else:
             raise ValueError("Split '%s' not recognised for the %s sampler." % (split, sampler_name))

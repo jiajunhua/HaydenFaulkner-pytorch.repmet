@@ -32,7 +32,24 @@ train:
 val:
   every: 1  # run validation every x epochs
 
+  sampler: 'episodes'
+  loss: 'prototypical'
+
   episodes: 100  # per epoch
+  categories_per_epi: 5
+  support_per_epi: 5
+  query_per_epi: 15
+
+
+test:  # will only do one epoch
+  split: 'test'
+
+  resume_from: 'B'
+
+  sampler: 'episodes'
+  loss: 'prototypical'
+
+  episodes: 100
   categories_per_epi: 5
   support_per_epi: 5
   query_per_epi: 15

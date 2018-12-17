@@ -72,7 +72,8 @@ def load_checkpoint(config, resume_from, model, optimizer):
             start_epoch = checkpoint['epoch']
             best_acc = checkpoint['best_acc']
             model.load_state_dict(checkpoint['model_state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            if optimizer: # is not None:
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             is_best = checkpoint['is_best']
             if is_best:
                 print("\nLoaded the best checkpoint '{}' (epoch {})\n".format(file_path, start_epoch))

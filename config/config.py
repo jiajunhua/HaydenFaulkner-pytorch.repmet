@@ -54,6 +54,9 @@ config.train.query_per_epi = ''
 config.val = edict()
 config.val.every = 0  # 0 is never
 
+config.val.sampler = None
+config.val.loss = None
+
 config.val.episodes = ''
 config.val.categories_per_epi = ''
 config.val.support_per_epi = ''
@@ -67,6 +70,19 @@ config.vis.every = 0  # 0 is never
 
 # Test Defaults
 config.test = edict()
+
+config.test.split = 'test'
+
+config.test.resume_from = 'B'  # B is best, L is latest, or define own path
+
+config.test.sampler = None
+config.test.loss = None
+
+config.test.episodes = ''
+config.test.categories_per_epi = ''
+config.test.support_per_epi = ''
+config.test.query_per_epi = ''
+
 
 # Classification Specific Defaults
 # parser.add_argument('--set_name', required=True, help='dataset name', default='mnist')

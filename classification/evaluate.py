@@ -1,116 +1,202 @@
+"""
+evaluation script for classification
+
+"""
+
+# Imports
 from __future__ import print_function
 
 import os
+import time
+import copy
+import pprint
 import argparse
 
+import numpy as np
+
+import torch
+import torchvision
 import torch.backends.cudnn as cudnn
 
-import configs
-from utils import *
-from data_loading.load import load_datasets
-from model_definitions.initialize import load_net
+from tensorboardX import SummaryWriter
+from datetime import datetime
 
-assert torch.cuda.is_available(), 'Error: CUDA not found!'
+from config.config import config, update_config, check_config
+from utils.logging.logger import initialize_logger
+from utils.checkpointing import load_checkpoint
 
+from model_definitions.initialize import initialize_model
+from data_loading.initialize import initialize_dataset, initialize_sampler
+from losses.initialize import initialize_loss
+from callbacks.tensorboard import TensorBoard, EmbeddingGrapher
 
-def evaluate(run_id,
-             set_name,
-             model_name,
-             chunk_size=32,
-             split='test',
-             load_iteration=-1,
-             load_path=configs.general.paths.models,
-             plots_path=configs.general.paths.graphing,
-             plots_ext='.png'):
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # Setup load path
-    load_path = os.path.join(load_path, "%s" % run_id)
-
-    # Setup plotting directory
-    plots_path = os.path.join(plots_path, "%s" % run_id)
-    os.makedirs(plots_path, exist_ok=True)
-
-    net, input_size = load_net(model_name)
-
-    # Load set and get train and test labels from datasets
-    train_dataset, test_dataset = load_datasets(set_name, input_size=input_size)
-    if split == 'train':
-        dataset = train_dataset
-    else:
-        dataset = test_dataset
-    y = get_labels(dataset)
-
-    # Use the GPU
-    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
-    net.cuda()
-    cudnn.benchmark = True
-
-    # Load the particular iteration we want
-    if load_iteration < 0:
-        l = os.listdir(load_path)
-        l.sort(reverse=True)
-        state = torch.load("%s/%s" % (load_path, l[1])) # ignore log.txt
-        print("Loading model: %s/%s" % (load_path, l[1]))
-    else:
-        if os.path.exists("%s/i%06d%s" % (load_path, load_iteration, '.pth')):
-            state = torch.load("%s/i%06d%s" % (load_path, load_iteration, '.pth')) # ignore log.txt
-            print("%s/i%06d%s" % (load_path, load_iteration, '.pth'))
-        else:
-            print("%s/i%06d%s doesn't exist... awkies. :/" % (load_path, load_iteration, '.pth'))
-            return
-
-    # Load the net state
-    net.load_state_dict(state['state_dict'])
-
-    # Load the loss and cluster centres
-    the_loss = state['the_loss']
-
-    # Compute the embeddings fof the dataset
-    x = compute_reps(net, dataset, list(range(len(y))), chunk_size=chunk_size)
-
-    # Compute the accuracies
-    test_acc   = the_loss.calc_accuracy(x, y, method='simple')
-    test_acc_b = the_loss.calc_accuracy(x, y, method='magnet')
-    test_acc_c = the_loss.calc_accuracy(x, y, method='repmet')
-    test_acc_d = the_loss.calc_accuracy(x, y, method='unsupervised')
-
-    print("simple: %0.3f -- magnet: %0.3f -- repmet: %0.3f -- unsupervised: %0.3f" % (test_acc, test_acc_b, test_acc_c, test_acc_d))
-
-    # And hey, why not graph them all!
-    graph(x, y,
-          cluster_centers=ensure_numpy(the_loss.centroids),
-          cluster_classes=the_loss.cluster_classes,
-          savepath="%s/test-%s%s" % (plots_path, split, plots_ext))
+print("PyTorch Version: ", torch.__version__)
+print("Torchvision Version: ", torchvision.__version__)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='PyTorch DML Evaluation')
-    parser.add_argument('--run_id', required=True, help='experiment run name', default='000')
-    parser.add_argument('--set_name', required=True, help='dataset name', default='mnist')
-    parser.add_argument('--model_name', required=True, help='model name', default='mnist_default')
-    parser.add_argument('--chunk_size', required=False, help='the chunk/batch size for calculating embeddings (lower for less mem)', default=32, type=int)
-    parser.add_argument('--split', required=False, help='train/test', default='test')
-    parser.add_argument('--load_iteration', required=False, help='load this iteration (-1 will be latest)', default=-1)
-    parser.add_argument('--load_path', required=False, help='where to load the model_definitions from', default=configs.general.paths.models)
-    parser.add_argument('--plots_path', required=False, help='where to save the plots', default=configs.general.paths.graphing)
-    parser.add_argument('--plots_ext', required=False, help='.png/.pdf', default='.png')
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='Train Classification Network')
+    # general
+    parser.add_argument('--cfg', help='experiment configure file name', required=True, type=str)
+
+    args, rest = parser.parse_known_args()
+
     return args
 
-if __name__ == "__main__":
+args = parse_args()
 
-    # args = parse_args()
-    # evaluate(run_id=args.run_id,
-    #          set_name=args.set_name,
-    #          model_name=args.model_name,
-    #          chunk_size=args.chunk_size,
-    #          split=args.split,
-    #          load_iteration=args.load_iteration,
-    #          load_path=args.load_path,
-    #          plots_path=args.plots_path,
-    #          plots_ext=args.plots_ext)
+def evaluate():
 
-    evaluate('004_r50_k3_resnet18_e1024', 'oxford_flowers', 'resnet18_e1024', split='train', load_iteration=2000)
-    evaluate('004_r50_k3_resnet18_e1024_nc', 'oxford_flowers', 'resnet18_e1024', split='train', load_iteration=2000)
-    evaluate('004_r50_k3_resnet18_e1024', 'oxford_flowers', 'resnet18_e1024', split='test', load_iteration=2000)
-    evaluate('004_r50_k3_resnet18_e1024_nc', 'oxford_flowers', 'resnet18_e1024', split='test', load_iteration=2000)
+    # setup seeds
+    np.random.seed(config.seed)
+    torch.manual_seed(config.seed)
+    torch.cuda.manual_seed(config.seed)
+
+    # Setup the paths and dirs
+    save_path = os.path.join(config.model.root_dir, config.model.type, config.model.id, config.run_id)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    assert os.path.exists(save_path), '{} does not exist'.format(save_path)
+
+    # Setup the logger
+    logger = initialize_logger(save_path=save_path, run_id=config.run_id)
+    pprint.pprint(config)
+    logger.info('testing config:{}\n'.format(pprint.pformat(config)))
+
+    #################### MODEL ########################
+    # Load the model definition
+    model, input_size, output_size = initialize_model(config=config,
+                                                      model_name=config.model.type,
+                                                      model_id=config.model.id)
+    model = model.to(device)
+
+    # Use the GPU and Parallel it
+    model = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
+    model.cuda()
+    cudnn.benchmark = True
+
+    #################### DATA ########################
+    # Load set and get test labels from datasets
+
+    datasets = dict()
+    datasets['test'] = initialize_dataset(config=config,
+                                          dataset_name=config.dataset.name,
+                                          dataset_id=config.dataset.id,
+                                          split='test')
+
+    samplers = dict()
+    samplers['test'] = initialize_sampler(config=config,
+                                          sampler_name=config.test.sampler,
+                                          dataset=datasets['test'],
+                                          split='test')
+
+    dataloaders = dict()
+    dataloaders['test'] = torch.utils.data.DataLoader(datasets['test'], batch_sampler=samplers['test'])
+
+    #################### LOSSES + METRICS ######################
+    # Setup losses
+    losses = dict()
+    losses['test'] = initialize_loss(config=config,
+                                     loss_name=config.test.loss,
+                                     split='test')
+
+    # Setup Metrics
+    metrics = dict()
+
+    ################### CALLBACKS #####################
+    # Setup Callbacks
+    callbacks = dict()
+    current_time = datetime.now().strftime('%Y-%m-%d-%H-%M')
+    tb_sw = SummaryWriter(log_dir=os.path.join(save_path, 'tb', current_time), comment=config.run_id)
+
+    callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
+    callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
+                              EmbeddingGrapher(every=config.vis.every, tb_sw=tb_sw, tag='test', label_image=True)]
+
+
+    # Load model params
+    _, _, model, _ = load_checkpoint(config=config,
+                                     resume_from=config.test.resume_from,
+                                     model=model,
+                                     optimizer=None)
+
+    perform(config=config,
+            model=model,
+            dataloaders=dataloaders,
+            losses=losses,
+            metrics=metrics,
+            callbacks=callbacks,
+            is_inception=False)
+
+
+def perform(config,
+            model,
+            dataloaders,
+            losses,
+            metrics,
+            callbacks,
+            is_inception=False):
+
+    since = time.time()
+
+    test_loss = []
+    test_acc = []
+
+    step = 0
+
+    model.eval()
+    # Iterate over data.
+    batch = 0
+    for inputs, labels in dataloaders['test']:
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        # Get model outputs and calculate loss
+        outputs = model(inputs)
+        loss, acc = losses['test'](input=outputs, target=labels)
+
+        # statistics
+        test_loss.append(loss.item())
+        test_acc.append(acc.item())
+
+        for callback in callbacks['batch_end']:
+            callback(0, batch, step, model,
+                     data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
+                     stats={'Testing Loss': test_loss[-1], 'Testing Acc': test_acc[-1]})
+
+        batch += 1
+        step += 1
+
+    avg_loss = np.mean(test_loss)
+    avg_acc = np.mean(test_acc)
+
+    print('Avg Testing Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
+
+    for callback in callbacks['epoch_end']:
+        callback(0, batch, step, model,
+                 data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
+                 stats={'Avg Testing Loss': avg_loss, 'Avg Testing Acc': avg_acc})
+
+
+    time_elapsed = time.time() - since
+    print('Testing complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+
+    return model, test_loss, test_acc
+
+
+def main():
+    from utils.debug import set_working_dir
+    # set the working directory as appropriate
+    set_working_dir()
+
+    print('Called with argument:', args)
+    # update config
+    update_config(args.cfg)
+    check_config(config)
+    evaluate()
+
+
+if __name__ == '__main__':
+    main()
