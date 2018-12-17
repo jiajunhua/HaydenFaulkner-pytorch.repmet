@@ -78,7 +78,7 @@ These results are calculated with `classification/evaluate.py`
 
 **Omniglot (Test Set):**
 
-| Model           | 1-Shot, 5-way | 5-Shot, 5-way* | 1-Shot, 20-way | 5-Shot, 20-way |
+| Model           | 1-Shot, 5-way | 5-Shot, 5-way | 1-Shot, 20-way | 5-Shot, 20-way |
 | --------------- | ------------: | -------------: | -------------: | -------------: |
 | `.yaml` file    | `protonets_1_5` | `protonets_5_5` | `protonets_1_20` | `protonets_5_20` |
 | *Original Paper*|         98.8% |          99.7% |          96.0% |          98.9% |
