@@ -38,6 +38,8 @@ config.train = edict()
 config.train.sampler = None
 config.train.loss = None
 
+config.train.checkpoint_every = 0  # 0 is never
+
 config.train.epochs = None
 config.train.learning_rate = None
 config.train.lr_scheduler_gamma = ''

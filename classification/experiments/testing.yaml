@@ -16,6 +16,8 @@ train:
   sampler: 'episodes'
   loss: 'prototypical'
 
+  checkpoint_every: 10  # this many epochs
+
   epochs: 100
   learning_rate: 0.001
   lr_scheduler_gamma: 0.5
