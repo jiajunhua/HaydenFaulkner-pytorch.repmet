@@ -1,0 +1,62 @@
+run_id: 'protonets_1s_20w'
+seed: 7
+
+
+model:
+  type: 'protonet'
+  id: '01'
+  use_pretrained: False
+
+
+dataset:
+  name: 'omniglot'
+  id: '00'
+
+
+train:
+  sampler: 'episodes'
+  loss: 'prototypical'
+
+  checkpoint_every: 10  # this many epochs
+
+  epochs: 100
+  learning_rate: 0.001
+  lr_scheduler_gamma: 0.5
+  lr_scheduler_step: 20
+
+  episodes: 100  # per epoch
+  categories_per_epi: 60  # way
+  support_per_epi: 1  # shot
+  query_per_epi: 5
+
+
+val:
+  every: 1  # run validation every x epochs
+
+  sampler: 'episodes'
+  loss: 'prototypical'
+
+  episodes: 100  # per epoch
+  categories_per_epi: 20  # way
+  support_per_epi: 1  # shot
+  query_per_epi: 15
+
+
+test:  # will only do one epoch
+  split: 'test'
+
+  resume_from: 'B'
+
+  sampler: 'episodes'
+  loss: 'prototypical'
+
+  episodes: 500
+  categories_per_epi: 20  # way
+  support_per_epi: 1  # shot
+  query_per_epi: 15
+
+
+vis:
+  every: 10  # update tensorboard every x steps (episodes)
+  plot_embed_every: 500  # update tensorboard projector every x steps (episodes) (Train and Val)
+  test_plot_embed_every: 100  # update tensorboard projector every x steps (episodes) (Test)

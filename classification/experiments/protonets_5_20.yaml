@@ -1,4 +1,4 @@
-run_id: 'protonets-01'
+run_id: 'protonets_5s_20w'
 seed: 7
 
 
@@ -25,8 +25,8 @@ train:
   lr_scheduler_step: 20
 
   episodes: 100  # per epoch
-  categories_per_epi: 60
-  support_per_epi: 5
+  categories_per_epi: 60  # way
+  support_per_epi: 5  # shot
   query_per_epi: 5
 
 
@@ -37,8 +37,8 @@ val:
   loss: 'prototypical'
 
   episodes: 100  # per epoch
-  categories_per_epi: 5
-  support_per_epi: 5
+  categories_per_epi: 20  # way
+  support_per_epi: 5  # shot
   query_per_epi: 15
 
 
@@ -51,8 +51,8 @@ test:  # will only do one epoch
   loss: 'prototypical'
 
   episodes: 500
-  categories_per_epi: 5
-  support_per_epi: 5
+  categories_per_epi: 20  # way
+  support_per_epi: 5  # shot
   query_per_epi: 15
 
 
