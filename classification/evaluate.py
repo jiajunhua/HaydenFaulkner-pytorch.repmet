@@ -111,9 +111,8 @@ def evaluate():
     current_time = datetime.now().strftime('%Y-%m-%d-%H-%M')
     tb_sw = SummaryWriter(log_dir=os.path.join(save_path, 'tb', current_time), comment=config.run_id)
 
-    callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
-    callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
-                              EmbeddingGrapher(every=config.vis.every, tb_sw=tb_sw, tag='test', label_image=True)]
+    callbacks['epoch_end'] = []
+    callbacks['batch_end'] = [EmbeddingGrapher(every=config.vis.test_plot_embed_every, tb_sw=tb_sw, tag='test', label_image=True)]
 
 
     # Load model params

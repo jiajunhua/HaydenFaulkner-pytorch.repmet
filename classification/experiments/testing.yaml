@@ -49,11 +49,13 @@ test:  # will only do one epoch
   sampler: 'episodes'
   loss: 'prototypical'
 
-  episodes: 100
+  episodes: 500
   categories_per_epi: 5
   support_per_epi: 5
   query_per_epi: 15
 
 
 vis:
-  every: 1  # update tensorboard every x epochs
+  every: 10  # update tensorboard every x steps (episodes)
+  plot_embed_every: 500  # update tensorboard projector every x steps (episodes) (Train and Val)
+  test_plot_embed_every: 100  # update tensorboard projector every x steps (episodes) (Test)

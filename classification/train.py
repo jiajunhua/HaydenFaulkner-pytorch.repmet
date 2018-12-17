@@ -147,11 +147,13 @@ def train():
     current_time = datetime.now().strftime('%Y-%m-%d-%H-%M')
     tb_sw = SummaryWriter(log_dir=os.path.join(save_path, 'tb', current_time), comment=config.run_id)
 
-    callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
-    callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
-                              EmbeddingGrapher(every=config.vis.every, tb_sw=tb_sw, tag='train', label_image=True)]
+    callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
+                              EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='train', label_image=True)]
+    callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
+
     callbacks['validation_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
-                                   EmbeddingGrapher(every=config.vis.every, tb_sw=tb_sw, tag='val', label_image=True)]
+                                   EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='val', label_image=True)]
+    callbacks['validation_batch_end'] = []
     #
     # if config.TRAIN.kmeans != 0:
     #     callbacks[0] = [callback.RepsKMeans(data=train_data_classwise, k=config.TRAIN.k, n_classes=config.dataset.NUM_CLASSES,
@@ -639,8 +641,10 @@ def fit(config,
             lr_scheduler.step()
 
         # Validation?
+
         if config.val.every > 0 and epoch % config.val.every == 0:
             model.eval()
+            v_batch = 0
             for v_inputs, v_labels in dataloaders['val']:
                 v_inputs = v_inputs.to(device)
                 v_labels = v_labels.to(device)
@@ -653,6 +657,13 @@ def fit(config,
                 # statistics
                 val_loss.append(loss.item())
                 val_acc.append(acc.item())
+
+                for callback in callbacks['validation_batch_end']:
+                    callback(epoch, batch, step, model,
+                             data={'inputs': v_inputs, 'outputs': v_outputs, 'labels': v_labels},
+                             stats={'Training Loss': val_loss[-1], 'Training Acc': val_acc[-1]})
+
+                v_batch += 1
 
             avg_v_loss = np.mean(val_loss[-config.train.episodes:])
             avg_v_acc = np.mean(val_acc[-config.train.episodes:])

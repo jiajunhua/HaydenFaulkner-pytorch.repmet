@@ -65,6 +65,8 @@ config.val.query_per_epi = ''
 # Visualisation Defaults
 config.vis = edict()
 config.vis.every = 0  # 0 is never
+config.vis.plot_embed_every = 0  # 0 is never
+config.vis.test_plot_embed_every = 0  # 0 is never
 
 # config.train.dml = False  # Use embedding networks? Baselines are false  # TODO does this go in model config?
 
