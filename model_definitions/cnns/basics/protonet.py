@@ -34,4 +34,4 @@ class ProtoNet(nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
-        return x.view(x.size(0), -1)
+        return x.view(x.size(0), -1)  # Flatten
