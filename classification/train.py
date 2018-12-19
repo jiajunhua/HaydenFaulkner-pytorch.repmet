@@ -616,7 +616,7 @@ def fit(config,
             #     outputs = model(inputs)
             #     loss = losses(input=outputs, target=labels)
             outputs = model(inputs)
-            loss, acc = losses['train'](input=outputs, target=labels)
+            loss, sample_losses, pred, acc = losses['train'](input=outputs, target=labels)
 
             loss.backward()
             optimizer.step()
@@ -652,7 +652,7 @@ def fit(config,
                 # with torch.set_grad_enabled(False):  # todo do we need the set grad? or does the zero handle this before the next backward call?
                 # Get model outputs and calculate loss
                 v_outputs = model(v_inputs)
-                loss, acc = losses['val'](input=v_outputs, target=v_labels)
+                loss, sample_losses, pred, acc = losses['val'](input=v_outputs, target=v_labels)
 
                 # statistics
                 val_loss.append(loss.item())
@@ -668,7 +668,7 @@ def fit(config,
             avg_v_loss = np.mean(val_loss[-config.train.episodes:])
             avg_v_acc = np.mean(val_acc[-config.train.episodes:])
 
-            print('Avg Validation Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
+            print('Avg Validation Loss: {:.4f} Acc: {:.4f}'.format(avg_v_loss, avg_v_acc))
 
             # Best validation accuracy yet?
             if avg_v_acc > best_acc:

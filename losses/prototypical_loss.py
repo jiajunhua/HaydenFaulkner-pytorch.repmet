@@ -65,8 +65,9 @@ def prototypical_loss(input, target, n_support):
     target_inds = target_inds.view(n_classes, 1, 1)
     target_inds = target_inds.expand(n_classes, n_query, 1).long()
 
-    loss = -log_p_y.gather(2, target_inds).squeeze().view(-1).mean()
-    _, y_hat = log_p_y.max(2)
-    acc = y_hat.eq(target_inds.squeeze()).float().mean()
+    losses = -log_p_y.gather(2, target_inds).squeeze().view(-1)
+    total_loss = torch.mean(losses)
+    _, pred = log_p_y.max(2)
+    acc = pred.eq(target_inds.squeeze()).float().mean()
 
-    return loss, acc
+    return total_loss, losses, pred, acc
