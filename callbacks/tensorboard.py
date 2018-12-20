@@ -6,7 +6,7 @@ class TensorBoard(object):
         self.every = every
         self.tb_sw = tb_sw
 
-    def __call__(self, epoch, batch, step, model, data, stats):
+    def __call__(self, epoch, batch, step, model, dataloaders, losses, optimizer, data, stats):
 
         if step % self.every == 0:
 
@@ -28,7 +28,7 @@ class EmbeddingGrapher(object):
         self.tag = tag
         self.label_image = label_image
 
-    def __call__(self, epoch, batch, step, model, data, stats):
+    def __call__(self, epoch, batch, step, model, dataloaders, losses, optimizer, data, stats):
 
         if step % self.every == 0:
             inputs = data['inputs']

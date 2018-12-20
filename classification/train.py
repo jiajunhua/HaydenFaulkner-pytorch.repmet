@@ -594,6 +594,11 @@ def fit(config,
 
         model.train()
 
+        for callback in callbacks['epoch_start']:
+            callback(epoch, batch, step, model, dataloaders, losses, optimizer,
+                     data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
+                     stats={'Training Loss': train_loss[-1], 'Training Acc': train_acc[-1]})
+
         # Iterate over data.
         batch = 0
         for inputs, labels in dataloaders['train']:  # this gets a batch (or an episode)
@@ -626,7 +631,7 @@ def fit(config,
             train_acc.append(acc.item())
 
             for callback in callbacks['batch_end']:
-                callback(epoch, batch, step, model,
+                callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                          data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
                          stats={'Training Loss': train_loss[-1], 'Training Acc': train_acc[-1]})
 
@@ -659,7 +664,7 @@ def fit(config,
                 val_acc.append(acc.item())
 
                 for callback in callbacks['validation_batch_end']:
-                    callback(epoch, batch, step, model,
+                    callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                              data={'inputs': v_inputs, 'outputs': v_outputs, 'labels': v_labels},
                              stats={'Training Loss': val_loss[-1], 'Training Acc': val_acc[-1]})
 
@@ -679,13 +684,13 @@ def fit(config,
 
             # End of validation callbacks
             for callback in callbacks['validation_end']:
-                callback(epoch, batch, step, model,
+                callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                          data={'inputs': v_inputs, 'outputs': v_outputs, 'labels': v_labels},
                          stats={'Avg Validation Loss': avg_v_loss, 'Avg Validation Acc': avg_v_acc})
 
         # End of epoch callbacks
         for callback in callbacks['epoch_end']:
-            callback(epoch, batch, step, model,
+            callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                      data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
                      stats={'Avg Training Loss': avg_loss, 'Avg Training Acc': avg_acc})
 
