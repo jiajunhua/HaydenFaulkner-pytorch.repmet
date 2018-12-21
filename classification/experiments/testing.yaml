@@ -21,10 +21,8 @@ train:
 
   epochs: 100
   learning_rate: 0.001
-  lr_scheduler_gamma: 0.5
-  lr_scheduler_step: 20
 
-  episodes: 1  # per epoch
+  episodes: 10  # per epoch
   k: 2
   m: 4
   d: 5
@@ -36,12 +34,8 @@ val:
   sampler: 'magnet'
   loss: 'magnet'
 
-  episodes: 1  # per epoch
-  categories_per_epi: 5
-  support_per_epi: 5
-  query_per_epi: 15
-
   L: 128
+  style: 'magnet'
 
 
 test:  # will only do one epoch
@@ -52,13 +46,9 @@ test:  # will only do one epoch
   sampler: 'magnet'
   loss: 'magnet'
 
-  episodes: 500
-  categories_per_epi: 5
-  support_per_epi: 5
-  query_per_epi: 15
 
 
 vis:
   every: 1  # update tensorboard every x steps (episodes)
-  plot_embed_every: 500  # update tensorboard projector every x steps (episodes) (Train and Val)
-  test_plot_embed_every: 100  # update tensorboard projector every x steps (episodes) (Test)
+  plot_embed_every: 10  # update tensorboard projector every x steps (episodes) (Train and Val)
+  test_plot_embed_every: 10  # update tensorboard projector every x steps (episodes) (Test)
