@@ -1,30 +1,64 @@
 # Prototypical Networks, Magnet Loss and RepMet in PyTorch
 **NOTE 1: THIS PROJECT IS BEING REWORKED, CURRENTLY ONLY PROTOTYPICAL NETS WORKS**
 
-### Prototypical Networks
+### Prototypical Networks (Few-Shot Classification)
 ![Figure 1 from paper](proto.png)
 
-"[Prototypical Networks for Few-shot Learning](https://arxiv.org/pdf/1703.05175.pdf)" learn a metric space in which classification can be performed by computing distances to prototype representations of each class.
+"[Prototypical Networks for Few-shot Learning](https://arxiv.org/pdf/1703.05175.pdf)"
+learn a metric space in which classification can be performed by computing
+distances to prototype representations of each class. They use this technique
+to perform episode based few-shot learning.
+
 
 My implementation takes a lot from [orobix/Prototypical-Networks-for-Few-shot-Learning-PyTorch](https://github.com/orobix/Prototypical-Networks-for-Few-shot-Learning-PyTorch)
 
 
-### Magnet Loss
+#### Training
+Model embeds image into vector, with batches consisting of a subset of classes,
+ with a set of support and set of query examples for each class. The supports
+ are used to build the prototype vector (just avg them) and the querys are then
+ used to calculate the loss by comparing how close they are to their prototypes.
+
+**The Goal:** Train a model that embeds samples of similar class close, while others far.
+
+#### Testing
+Testing is done in the same way, now we can think of the number of supports
+per class as the n-shot.
+
+### Magnet Loss (Fine-Grained Classification)
 ![Figure 3 from paper](magnet.png)
 
-"[Metric Learning with Adaptive Density Discrimination](http://arxiv.org/pdf/1511.05939v2.pdf)" introduced
-a new optimization objective for distance metric learning called Magnet Loss that, unlike related losses,
-operates on entire neighborhoods in the representation space and adaptively defines the similarity that is
-being optimized to account for the changing representations of the training data.
+"[Metric Learning with Adaptive Density Discrimination](http://arxiv.org/pdf/1511.05939v2.pdf)"
+learn a metric space in which classification can be performed by computing
+distances to cluster centres, with clusters belonging to classes. They don't
+perform few shot classification and instead focus on fine-grained classification.
 
 This takes a lot from the Tensorflow Magnet Loss code: [pumpikano/tf-magnet-loss](https://github.com/pumpikano/tf-magnet-loss)
 
-### RepMet
+#### Training
+Model embeds images into vectors which are used to make **k** clusters per class (with kmeans).
+We forward pass the entire training set to embed all samples to perform kmeans
+and build (and update) the clusters. The batches consist of **m** clusters,
+a semi-random seed cluster is selected (chosen based on loss value of its members)
+ then the next closest m-1 clusters of
+different classes are chosen. From the **m** clusters, **d** samples which
+belong to each of these clusters are randomly chosen (samples belong if they
+are closest to the cluster center than any other cluster centre).
+
+**The Goal:** Train a model which embeds samples of similar class close, while others far.
+Also, find cluster means and variances for each class.
+
+#### Testing
+Using the clusters (means and variances) learnt in training (obtained by
+performing kmeans over the training set) embed the test set and classify.
+
+### RepMet (Fine-Grained Classification + Few-Shot Detection)
 ![Figure 2 from paper](repmet.png)
 
 "[RepMet: Representative-based Metric Learning for Classification and One-shot Object Detection](https://arxiv.org/pdf/1806.04728.pdf)"
 extends upon magnet loss by storing the centroid as representations that are learnable, rather than just
- statically calculated every now and again with k-means.
+ statically calculated every now and again with k-means. They also perform fine-grained classification,
+ but also extend their work to perform few-shot object detection.
 
 ## Install
 
