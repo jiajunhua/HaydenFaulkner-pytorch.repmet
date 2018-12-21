@@ -108,8 +108,7 @@ def evaluate():
     ################### CALLBACKS #####################
     # Setup Callbacks
     callbacks = dict()
-    current_time = datetime.now().strftime('%Y-%m-%d-%H-%M')
-    tb_sw = SummaryWriter(log_dir=os.path.join(save_path, 'tb', current_time), comment=config.run_id)
+    tb_sw = SummaryWriter(log_dir=os.path.join(save_path, 'tb'), comment=config.run_id)
 
     callbacks['epoch_end'] = []
     callbacks['batch_end'] = [EmbeddingGrapher(every=config.vis.test_plot_embed_every, tb_sw=tb_sw, tag='test', label_image=True)]
@@ -154,14 +153,14 @@ def perform(config,
 
         # Get model outputs and calculate loss
         outputs = model(inputs)
-        loss, acc = losses['test'](input=outputs, target=labels)
+        loss, sample_losses, pred, acc = losses['test'](input=outputs, target=labels)
 
         # statistics
         test_loss.append(loss.item())
         test_acc.append(acc.item())
 
         for callback in callbacks['batch_end']:
-            callback(0, batch, step, model,
+            callback(0, batch, step, model, dataloaders, losses, None,
                      data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
                      stats={'Testing Loss': test_loss[-1], 'Testing Acc': test_acc[-1]})
 
@@ -174,7 +173,7 @@ def perform(config,
     print('Avg Testing Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
 
     for callback in callbacks['epoch_end']:
-        callback(0, batch, step, model,
+        callback(0, batch, step, model, dataloaders, losses, None,
                  data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
                  stats={'Avg Testing Loss': avg_loss, 'Avg Testing Acc': avg_acc})
 
