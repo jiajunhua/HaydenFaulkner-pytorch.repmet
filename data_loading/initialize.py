@@ -29,15 +29,19 @@ def initialize_dataset(config, dataset_name, dataset_id, split):
             transforms = trns.Compose([trns.ToTensor()])
 
             if split == 'train':
-                return MNIST(root=config.dataset.root_dir,
+                dset = MNIST(root=config.dataset.root_dir,
                              train=True,
                              transform=transforms,
                              download=True)
+                dset.labels = dset.train_labels
+
             else:
-                return MNIST(root=config.dataset.root_dir,
+                dset = MNIST(root=config.dataset.root_dir,
                              train=False,
                              transform=transforms,
                              download=True)
+                dset.labels = dset.test_labels
+            return dset
     else:
         raise ValueError("Dataset '%s' not recognised." % dataset_name)
 
@@ -63,10 +67,17 @@ def initialize_sampler(config, sampler_name, dataset, split):
         else:
             raise ValueError("Split '%s' not recognised for the %s sampler." % (split, sampler_name))
     if sampler_name == 'magnet':
-        return MagnetBatchSampler(labels=dataset.labels,
-                                  k=config.train.k,
-                                  m=config.train.m,
-                                  d=config.train.d,
-                                  iterations=config.train.episodes)
+        if split == 'train':
+            return MagnetBatchSampler(labels=dataset.labels,
+                                      k=config.train.k,
+                                      m=config.train.m,
+                                      d=config.train.d,
+                                      iterations=config.train.episodes)
+        elif split == 'val':
+            return None
+        elif split == 'test':
+            return None
+        else:
+            raise ValueError("Split '%s' not recognised for the %s sampler." % (split, sampler_name))
     else:
         raise ValueError("Sampler '%s' not recognised." % sampler_name)
