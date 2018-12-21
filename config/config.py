@@ -46,9 +46,14 @@ config.train.lr_scheduler_gamma = ''
 config.train.lr_scheduler_step = ''
 
 config.train.episodes = ''
+# protos
 config.train.categories_per_epi = ''
 config.train.support_per_epi = ''
 config.train.query_per_epi = ''
+# magnet
+config.train.k = ''
+config.train.m = ''
+config.train.d = ''
 
 # Validation Defaults
 config.val = edict()

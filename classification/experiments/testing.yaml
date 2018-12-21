@@ -13,8 +13,8 @@ dataset:
 
 
 train:
-  sampler: 'episodes'
-  loss: 'prototypical'
+  sampler: 'magnet'
+  loss: 'magnet'
 
   checkpoint_every: 10  # this many epochs
 
@@ -23,19 +23,19 @@ train:
   lr_scheduler_gamma: 0.5
   lr_scheduler_step: 20
 
-  episodes: 100  # per epoch
-  categories_per_epi: 60
-  support_per_epi: 5
-  query_per_epi: 5
+  episodes: 1  # per epoch
+  k: 1
+  m: 12
+  d: 4
 
 
 val:
-  every: 1  # run validation every x epochs
+  every: 1000  # run validation every x epochs
 
-  sampler: 'episodes'
-  loss: 'prototypical'
+  sampler: 'magnet'
+  loss: 'magnet'
 
-  episodes: 100  # per epoch
+  episodes: 1  # per epoch
   categories_per_epi: 5
   support_per_epi: 5
   query_per_epi: 15
@@ -46,8 +46,8 @@ test:  # will only do one epoch
 
   resume_from: 'B'
 
-  sampler: 'episodes'
-  loss: 'prototypical'
+  sampler: 'magnet'
+  loss: 'magnet'
 
   episodes: 500
   categories_per_epi: 5
