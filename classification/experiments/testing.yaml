@@ -1,5 +1,6 @@
+run_type: 'magnetloss'
 run_id: 'tester-01'
-
+seed: 7
 
 model:
   type: 'protonet'
