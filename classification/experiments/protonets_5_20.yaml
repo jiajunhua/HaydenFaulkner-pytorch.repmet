@@ -51,7 +51,7 @@ test:  # will only do one epoch
   sampler: 'episodes'
   loss: 'prototypical'
 
-  episodes: 500
+  episodes: 100
   categories_per_epi: 20  # way
   support_per_epi: 5  # shot
   query_per_epi: 15
