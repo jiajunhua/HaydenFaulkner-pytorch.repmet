@@ -31,6 +31,9 @@ class MagnetBatchSampler(object):
         self.classes = torch.LongTensor(self.classes)
         self.num_classes = len(self.classes)
 
+        # make sure we have enough clusters to chose m from
+        assert self.m < (self.num_classes*self.k), "Not enough classes in this dataset for m: %d" % self.m
+
         self.centroids = None
         self.assignments = np.zeros_like(labels, int)
 
@@ -163,30 +166,30 @@ class MagnetBatchSampler(object):
         return int(c / self.k)  # int floors it for us nicely, without this you could get a floating value
 
 
-if __name__ == "__main__":
-    # use this for debugging and checks
-    from utils.debug import set_working_dir
-    from config.config import config
-    from data_loading.sets import OxfordFlowersDataset, OmniglotDataset
-
-    # set the working directory as appropriate
-    set_working_dir()
-
-    # load the dataset
-    dataset = OxfordFlowersDataset(root_dir=config.dataset.root_dir)
-
-    # setup the the sampler
-    sampler = MagnetBatchSampler(labels=dataset.labels, k=8, m=12, d=4, iterations=5)
-
-    # setup the dataloader
-    dataloader = torch.utils.data.DataLoader(dataset, batch_sampler=sampler)
-
-
-    dataloader.sampler.update_clusters(reps)
-    for epoch in range(1):
-        print("Epoch %d" % epoch)
-        for batch in iter(dataloader):
-            print('-'*10)
-            x, y = batch
-            print(x)
-            print(y)
+# if __name__ == "__main__":
+#     # use this for debugging and checks
+#     from utils.debug import set_working_dir
+#     from config.config import config
+#     from data_loading.sets import OxfordFlowersDataset, OmniglotDataset
+#
+#     # set the working directory as appropriate
+#     set_working_dir()
+#
+#     # load the dataset
+#     dataset = OxfordFlowersDataset(root_dir=config.dataset.root_dir)
+#
+#     # setup the the sampler
+#     sampler = MagnetBatchSampler(labels=dataset.labels, k=8, m=12, d=4, iterations=5)
+#
+#     # setup the dataloader
+#     dataloader = torch.utils.data.DataLoader(dataset, batch_sampler=sampler)
+#
+#
+#     # dataloader.sampler.update_clusters(reps)
+#     for epoch in range(1):
+#         print("Epoch %d" % epoch)
+#         for batch in iter(dataloader):
+#             print('-'*10)
+#             x, y = batch
+#             print(x)
+#             print(y)
