@@ -40,7 +40,7 @@ class LeNet(nn.Module):
         x = self.emb(x)
         embeddings = x
 
-        return embeddings, self.features
+        return embeddings
 
     @staticmethod
     def num_flat_features(x):
