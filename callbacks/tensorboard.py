@@ -17,7 +17,8 @@ class TensorBoard(object):
                 self.tb_sw.add_histogram(tag=name, values=param.clone().cpu().data.numpy(), global_step=step)
 
             for k, v in stats.items():
-                self.tb_sw.add_scalar(tag=k, scalar_value=v, global_step=step)
+                if k != 'sample_losses':
+                    self.tb_sw.add_scalar(tag=k, scalar_value=v, global_step=step)
 
 
 class EmbeddingGrapher(object):
