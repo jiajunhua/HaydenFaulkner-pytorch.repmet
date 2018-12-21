@@ -18,9 +18,6 @@ import torch
 import torchvision
 import torch.backends.cudnn as cudnn
 
-from tensorboardX import SummaryWriter
-from datetime import datetime
-
 from config.config import config, update_config, check_config
 from utils.logging.logger import initialize_logger
 from utils.checkpointing import save_checkpoint, load_checkpoint
@@ -28,14 +25,8 @@ from utils.checkpointing import save_checkpoint, load_checkpoint
 from model_definitions.initialize import initialize_model
 from data_loading.initialize import initialize_dataset, initialize_sampler
 from losses.initialize import initialize_loss
-from callbacks.tensorboard import TensorBoard, EmbeddingGrapher
-from callbacks.magnet_updates import UpdateClusters, UpdateLosses
+from callbacks.initialize import initialize_callbacks
 
-# from magnet_loss import MagnetLoss
-# from repmet_loss import RepMetLoss, RepMetLoss2, RepMetLoss3
-# from my_loss import MyLoss1
-# from data_loading.load import load_datasets
-# from model_definitions.load import load_net
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -137,29 +128,22 @@ def train():
     optimizer = torch.optim.Adam(params=model.parameters(),
                                  lr=config.train.learning_rate)
 
-    # torch.optim.lr_scheduler.StepLR(optimizer=optimizer,
-    #                                 gamma=config.train.lr_scheduler_gamma,
-    #                                 step_size=config.train.lr_scheduler_step)
+    if config.run_type == 'protonets':  # TODO consider putting in a callback on epoch_end, but then need to pass lr_sch
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer,
+                                                   gamma=config.train.lr_scheduler_gamma,
+                                                   step_size=config.train.lr_scheduler_step)
+    else:
+        lr_scheduler = None
 
     ################### CALLBACKS #####################
     # Setup Callbacks
-    callbacks = {}
-    current_time = datetime.now().strftime('%Y-%m-%d-%H-%M')
-    tb_sw = SummaryWriter(log_dir=os.path.join(save_path, 'tb', current_time), comment=config.run_id)
-
-    callbacks['epoch_start'] = [UpdateClusters(every=1, dataset=datasets['train'])]
-
-    callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
-                              EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='train', label_image=True),
-                              UpdateLosses(every=1),
-                              UpdateClusters(every=1, dataset=datasets['train'])]
-    # callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
-    #                           EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='train', label_image=True)]
-    callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
-
-    callbacks['validation_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
-                                   EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='val', label_image=True)]
-    callbacks['validation_batch_end'] = []
+    callbacks = initialize_callbacks(config=config,
+                                     model=model,
+                                     datasets=datasets,
+                                     samplers=samplers,
+                                     dataloaders=dataloaders,
+                                     losses=losses,
+                                     optimizer=optimizer)
     #
     # if config.TRAIN.kmeans != 0:
     #     callbacks[0] = [callback.RepsKMeans(data=train_data_classwise, k=config.TRAIN.k, n_classes=config.dataset.NUM_CLASSES,
@@ -175,7 +159,7 @@ def train():
         losses=losses,
         optimizer=optimizer,
         callbacks=callbacks,
-        lr_scheduler=None,
+        lr_scheduler=lr_scheduler,
         is_inception=False)
 #
 #     # make list of cluster refresh if given an interval int
@@ -577,8 +561,6 @@ def fit(config,
 
     train_loss = []
     train_acc = []
-    val_loss = []
-    val_acc = []
 
     best_state = copy.deepcopy(model.state_dict())
     best_state = model.state_dict()
@@ -643,18 +625,25 @@ def fit(config,
             batch += 1
             step += 1
 
-        avg_loss = np.mean(train_loss[-config.train.episodes:])
-        avg_acc = np.mean(train_acc[-config.train.episodes:])
+        avg_loss = np.mean(train_loss[-batch:])
+        avg_acc = np.mean(train_acc[-batch:])
 
         print('Avg Training Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
-        # if lr_scheduler:
-        #     lr_scheduler.step()
+        if lr_scheduler:
+            lr_scheduler.step()
 
         # Validation?
-
         if config.val.every > 0 and (epoch+1) % config.val.every == 0:
+
+            for callback in callbacks['validation_start']:
+                callback(epoch, 0, step, model, dataloaders, losses, optimizer,
+                         data={},
+                         stats={})
+
             model.eval()
             v_batch = 0
+            val_loss = []
+            val_acc = []
             for v_inputs, v_labels in dataloaders['val']:
                 v_inputs = v_inputs.to(device)
                 v_labels = v_labels.to(device)
@@ -669,14 +658,14 @@ def fit(config,
                 val_acc.append(acc.item())
 
                 for callback in callbacks['validation_batch_end']:
-                    callback(epoch, batch, step, model, dataloaders, losses, optimizer,
+                    callback(epoch, batch, step, model, dataloaders, losses, optimizer,  # todo should we make this v_batch?
                              data={'inputs': v_inputs, 'outputs': v_outputs, 'labels': v_labels},
-                             stats={'Training Loss': val_loss[-1], 'Training Acc': val_acc[-1]})
+                             stats={'Validation Loss': val_loss[-1], 'Validation Acc': val_acc[-1]})
 
                 v_batch += 1
 
-            avg_v_loss = np.mean(val_loss[-config.train.episodes:])
-            avg_v_acc = np.mean(val_acc[-config.train.episodes:])
+            avg_v_loss = np.mean(val_loss)
+            avg_v_acc = np.mean(val_acc)
 
             print('Avg Validation Loss: {:.4f} Acc: {:.4f}'.format(avg_v_loss, avg_v_acc))
 
