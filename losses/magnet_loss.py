@@ -2,6 +2,8 @@
 Taken from vithursant's repo:
 https://github.com/vithursant/MagnetLoss-PyTorch/blob/master/magnet_loss/magnet_loss.py
 """
+import numpy as np
+
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -36,8 +38,12 @@ class MagnetLoss(nn.Module):
         self.alpha = alpha
         self.n_clusters = m
         self.examples_per_cluster = d
+        # self.variances = np.array([])
+        self.variances = torch.tensor([0.0])
+        # self.variance = variance
 
     def forward(self, input, target):  # reps and classes, x and y
+
         GPU_INT_DTYPE = torch.cuda.IntTensor
         GPU_LONG_DTYPE = torch.cuda.LongTensor
         GPU_FLOAT_DTYPE = torch.cuda.FloatTensor
@@ -63,9 +69,12 @@ class MagnetLoss(nn.Module):
 
         intra_cluster_costs = torch.sum(intra_cluster_mask * sample_costs, dim=1)
 
-        N = self.r.size()[0]
+        N = self.r.size()[0]  # N = M*D (Batch size)
 
         variance = torch.sum(intra_cluster_costs) / float(N - 1)
+
+        # self.variances = np.hstack((self.variances, variance.data.cpu().numpy()))
+        self.variances = torch.cat((self.variances, variance.unsqueeze(0).cpu()), 0)
 
         var_normalizer = -1 / (2 * variance**2)
 
@@ -92,6 +101,72 @@ class MagnetLoss(nn.Module):
         _, pred = sample_costs.min(1)
         acc = pred.eq(clusters_tensor.type(GPU_LONG_DTYPE)).float().mean()
         return total_loss, losses, pred, acc
+
+
+class MagnetLossEval(nn.Module):
+
+    def __init__(self, L=128, style='magnet'):
+        super(MagnetLossEval, self).__init__()
+        self.cluster_means = None
+        self.cluster_classes = None
+        self.variance = None
+        self.L = L
+        self.style = style
+
+    def forward(self, input, target):  # reps and classes, x and y # expects batch size of 1
+
+        # make sure these have been set with the callbacks!!
+        assert self.cluster_means is not None
+        assert self.cluster_classes is not None
+        assert self.variance is not None
+
+        GPU_INT_DTYPE = torch.cuda.IntTensor
+        GPU_LONG_DTYPE = torch.cuda.LongTensor
+        GPU_FLOAT_DTYPE = torch.cuda.FloatTensor
+
+        num_classes = np.max(self.cluster_classes) + 1  # the number of classes of the dataset
+        cluster_means = torch.from_numpy(self.cluster_means).type(GPU_FLOAT_DTYPE)
+        cluster_classes = torch.from_numpy(self.cluster_classes).type(GPU_LONG_DTYPE)
+        sample_costs = compute_euclidean_distance(cluster_means, expand_dims(input, 1))
+
+        if self.style == 'closest':
+            _, pred = sample_costs.min(1)
+            pred = cluster_classes[pred]
+            acc = pred.eq(target).float()
+            return torch.zeros(1), torch.zeros(1), pred, acc
+        else:
+            num_clusters = cluster_means.size()[0]
+
+            # Sort the clusters by closest distance to sample
+            sorted_sample_costs, indices = torch.sort(sample_costs)
+            sorted_sample_costs = sorted_sample_costs.squeeze()
+            indices = indices.type(GPU_LONG_DTYPE).squeeze()
+            sorted_cluster_classes = cluster_classes[indices]
+
+            # If L < num_clusters then lets only take the top L
+            if self.L < num_clusters:
+                sorted_sample_costs = sorted_sample_costs[:self.L]
+                sorted_cluster_classes = sorted_cluster_classes[:self.L]
+                num_clusters = self.L
+
+            var_normalizer = -1 / (2 * self.variance ** 2)  # Todo the variance messes it up at the moment cause makes the nomaliser huge
+
+            normalised_costs = torch.exp(var_normalizer * sorted_sample_costs).type(GPU_FLOAT_DTYPE)
+
+            per_class_costs = torch.zeros(num_classes, num_clusters).type(GPU_FLOAT_DTYPE)
+            per_class_costs = per_class_costs.scatter_(0, sorted_cluster_classes.unsqueeze(0), normalised_costs.unsqueeze(0))
+            numerator = per_class_costs.sum(1)
+
+            denominator = torch.sum(normalised_costs)
+
+            epsilon = 1e-8
+
+            probs = numerator / (denominator + epsilon)
+
+            _, pred = probs.max(0)
+            acc = pred.eq(target).float()
+
+            return torch.zeros(1), torch.zeros(1), pred, acc
 
 
 def expand_dims(var, dim=0):

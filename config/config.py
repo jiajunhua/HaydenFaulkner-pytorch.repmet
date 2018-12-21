@@ -70,6 +70,7 @@ config.val.support_per_epi = ''
 config.val.query_per_epi = ''
 # magnet
 config.val.L = ''
+config.val.style = 'magnet'  # or 'closest'
 # Visualisation Defaults
 config.vis = edict()
 config.vis.every = 0  # 0 is never
