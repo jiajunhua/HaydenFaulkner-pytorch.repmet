@@ -3,13 +3,13 @@ run_id: 'tester-01'
 seed: 7
 
 model:
-  type: 'protonet'
+  type: 'lenet'
   id: '01'
   use_pretrained: False
 
 
 dataset:
-  name: 'omniglot'
+  name: 'mnist'
   id: '00'
 
 
@@ -25,13 +25,13 @@ train:
   lr_scheduler_step: 20
 
   episodes: 1  # per epoch
-  k: 1
-  m: 12
-  d: 4
+  k: 2
+  m: 4
+  d: 5
 
 
 val:
-  every: 1000  # run validation every x epochs
+  every: 1  # run validation every x epochs
 
   sampler: 'magnet'
   loss: 'magnet'
@@ -40,6 +40,8 @@ val:
   categories_per_epi: 5
   support_per_epi: 5
   query_per_epi: 15
+
+  L: 128
 
 
 test:  # will only do one epoch
@@ -57,6 +59,6 @@ test:  # will only do one epoch
 
 
 vis:
-  every: 10  # update tensorboard every x steps (episodes)
+  every: 1  # update tensorboard every x steps (episodes)
   plot_embed_every: 500  # update tensorboard projector every x steps (episodes) (Train and Val)
   test_plot_embed_every: 100  # update tensorboard projector every x steps (episodes) (Test)

@@ -12,6 +12,7 @@ config.seed = 7
 config.gpus = ''
 
 # Shared Defaults
+config.run_type = None
 config.run_id = None
 
 
@@ -62,11 +63,13 @@ config.val.every = 0  # 0 is never
 config.val.sampler = None
 config.val.loss = None
 
+# protos
 config.val.episodes = ''
 config.val.categories_per_epi = ''
 config.val.support_per_epi = ''
 config.val.query_per_epi = ''
-
+# magnet
+config.val.L = ''
 # Visualisation Defaults
 config.vis = edict()
 config.vis.every = 0  # 0 is never
