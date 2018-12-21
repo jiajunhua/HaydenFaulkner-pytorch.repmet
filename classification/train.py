@@ -29,7 +29,7 @@ from model_definitions.initialize import initialize_model
 from data_loading.initialize import initialize_dataset, initialize_sampler
 from losses.initialize import initialize_loss
 from callbacks.tensorboard import TensorBoard, EmbeddingGrapher
-
+from callbacks.magnet_updates import UpdateClusters, UpdateLosses
 
 # from magnet_loss import MagnetLoss
 # from repmet_loss import RepMetLoss, RepMetLoss2, RepMetLoss3
@@ -137,9 +137,9 @@ def train():
     optimizer = torch.optim.Adam(params=model.parameters(),
                                  lr=config.train.learning_rate)
 
-    torch.optim.lr_scheduler.StepLR(optimizer=optimizer,
-                                    gamma=config.train.lr_scheduler_gamma,
-                                    step_size=config.train.lr_scheduler_step)
+    # torch.optim.lr_scheduler.StepLR(optimizer=optimizer,
+    #                                 gamma=config.train.lr_scheduler_gamma,
+    #                                 step_size=config.train.lr_scheduler_step)
 
     ################### CALLBACKS #####################
     # Setup Callbacks
@@ -147,8 +147,14 @@ def train():
     current_time = datetime.now().strftime('%Y-%m-%d-%H-%M')
     tb_sw = SummaryWriter(log_dir=os.path.join(save_path, 'tb', current_time), comment=config.run_id)
 
+    callbacks['epoch_start'] = [UpdateClusters(every=1, dataset=datasets['train'])]
+
     callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
-                              EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='train', label_image=True)]
+                              EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='train', label_image=True),
+                              UpdateLosses(every=1),
+                              UpdateClusters(every=1, dataset=datasets['train'])]
+    # callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
+    #                           EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='train', label_image=True)]
     callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
 
     callbacks['validation_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
@@ -574,11 +580,11 @@ def fit(config,
     val_loss = []
     val_acc = []
 
-    # best_state = copy.deepcopy(model.state_dict())
-    # best_state = model.state_dict()
-    # best_acc = 0
-    #
-    # start_epoch = 0
+    best_state = copy.deepcopy(model.state_dict())
+    best_state = model.state_dict()
+    best_acc = 0
+
+    start_epoch = 0
 
     # Load Checkpoint?
     start_epoch, best_acc, model, optimizer = load_checkpoint(config=config,
@@ -586,20 +592,18 @@ def fit(config,
                                                               model=model,
                                                               optimizer=optimizer)
 
-
     step = 0
     for epoch in range(start_epoch, config.train.epochs):
         print('Epoch {}/{}'.format(epoch, config.train.epochs - 1))
         print('-' * 10)
 
-        model.train()
-
         for callback in callbacks['epoch_start']:
-            callback(epoch, batch, step, model, dataloaders, losses, optimizer,
-                     data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
-                     stats={'Training Loss': train_loss[-1], 'Training Acc': train_acc[-1]})
+            callback(epoch, 0, step, model, dataloaders, losses, optimizer,
+                     data={},
+                     stats={})
 
         # Iterate over data.
+        model.train()
         batch = 0
         for inputs, labels in dataloaders['train']:  # this gets a batch (or an episode)
             inputs = inputs.to(device)
@@ -633,7 +637,8 @@ def fit(config,
             for callback in callbacks['batch_end']:
                 callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                          data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
-                         stats={'Training Loss': train_loss[-1], 'Training Acc': train_acc[-1]})
+                         stats={'Training Loss': train_loss[-1], 'Training Acc': train_acc[-1],
+                                'sample_losses': sample_losses})
 
             batch += 1
             step += 1
@@ -642,12 +647,12 @@ def fit(config,
         avg_acc = np.mean(train_acc[-config.train.episodes:])
 
         print('Avg Training Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
-        if lr_scheduler:
-            lr_scheduler.step()
+        # if lr_scheduler:
+        #     lr_scheduler.step()
 
         # Validation?
 
-        if config.val.every > 0 and epoch % config.val.every == 0:
+        if config.val.every > 0 and (epoch+1) % config.val.every == 0:
             model.eval()
             v_batch = 0
             for v_inputs, v_labels in dataloaders['val']:
