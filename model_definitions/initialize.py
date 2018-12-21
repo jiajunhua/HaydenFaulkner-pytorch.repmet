@@ -3,6 +3,8 @@ from torchvision import models
 
 from model_definitions.others.encoder import Encoder
 from model_definitions.cnns.basics.protonet import ProtoNet
+from model_definitions.cnns.basics.lenet import LeNet
+from model_definitions.cnns.inceptions.googlenet import GoogLeNet
 
 def initialize_model(config, model_name, model_id):
     # Initialize these variables which will be set in this if statement. Each of these
@@ -84,6 +86,20 @@ def initialize_model(config, model_name, model_id):
             output_size = 64
 
             model = ProtoNet(x_dim=1, hid_dim=64, z_dim=output_size)
+
+    elif model_name == "lenet":
+        if model_id == '01':
+            input_size = 28
+            output_size = 3  # todo maybe alter this, put as config option
+
+            model = LeNet(emb_dim=output_size)
+
+    elif model_name == "googlenet":
+        if model_id == '01':
+            input_size = 32
+            output_size = 3  # todo maybe alter this, put as config option
+
+            model = GoogLeNet(output_dim=output_size)
     else:
         print("Invalid model name, exiting...")
         exit()
