@@ -1,6 +1,7 @@
 from torchvision import transforms, datasets
+
+from data_loading.sets.oxford_flowers import OxFlowers
 from data_loading.stanford_dogs import StanDogs
-from data_loading.oxford_flowers import OxFlowers
 
 
 def load_datasets(set_id, set_path, input_size=224, stats=True):

@@ -166,7 +166,9 @@ class OxfordFlowersDataset(Dataset):
         # todo either turn image to tensor in transform or do here
         # Load the image
         ImageFile.LOAD_TRUNCATED_IMAGES = True
-        image = Image.open(path).convert('RGB')
+        image = Image.open(path)#.convert('RGB')
+
+
 
         return image
 
