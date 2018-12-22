@@ -14,8 +14,8 @@ def forward(model, dataset, chunk_size):
     outputs = []
     model.eval()
     trainloader = DataLoader(dataset,
-                             batch_size=chunks,
-                             shuffle=False,
+                             batch_size=chunk_size,#chunks,
+                             shuffle=False,  # don't shuffle as we take labels in order in cluster update
                              num_workers=1)
 
     for batch_idx, (inputs, labels) in enumerate(trainloader):
