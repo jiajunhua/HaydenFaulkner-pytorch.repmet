@@ -116,7 +116,7 @@ These results are calculated with `classification/evaluate.py`
 | ---------------- | --------------: | --------------: | ---------------: | ---------------: |
 | `.yaml` file     | `protonets_1_5` | `protonets_5_5` | `protonets_1_20` | `protonets_5_20` |
 | *Original Paper* |           98.8% |           99.7% |            96.0% |            98.9% |
-| *This Code* *    |          98.85% |               % |                % |                % |
+| *This Code* *    |          98.85% |          99.69% |           94.74% |           98.49% |
 
 *One test run of 100 episodes
 
