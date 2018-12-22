@@ -1,17 +1,17 @@
 run_type: 'magnetloss'
-run_id: 'tester-02'
+run_id: 'tester-01'
 seed: 7
 
 model:
-  type: 'googlenet'
+  type: 'lenet'
   id: '01'
   use_pretrained: False
 
-  emb_size: 64
+  emb_size: 3
 
 
 dataset:
-  name: 'flowers'
+  name: 'mnist'
   id: '00'
 
 
@@ -25,9 +25,9 @@ train:
   learning_rate: 0.001
 
   episodes: 10  # per epoch
-  k: 1
-  m: 12
-  d: 4
+  k: 2
+  m: 4
+  d: 5
 
 
 val:

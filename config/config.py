@@ -24,6 +24,8 @@ config.model.root_dir = 'models'
 config.model.type = None
 config.model.id = None
 
+config.model.emb_size = ''
+
 config.model.backbone = edict()
 config.model.backbone.name = ''  # What model spec to use for the backbone, if backbone nec
 config.model.backbone.out_layer = ''  # What layer do we take from the backbone net

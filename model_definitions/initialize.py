@@ -83,21 +83,21 @@ def initialize_model(config, model_name, model_id):
     elif model_name == "protonet":
         if model_id == '01':
             input_size = 28
-            output_size = 64
+            output_size = config.model.emb_size
 
             model = ProtoNet(x_dim=1, hid_dim=64, z_dim=output_size)
 
     elif model_name == "lenet":
         if model_id == '01':
             input_size = 28
-            output_size = 3  # todo maybe alter this, put as config option
+            output_size = config.model.emb_size  # todo maybe alter this, put as config option
 
             model = LeNet(emb_dim=output_size)
 
     elif model_name == "googlenet":
         if model_id == '01':
             input_size = 32
-            output_size = 3  # todo maybe alter this, put as config option
+            output_size = config.model.emb_size  # todo maybe alter this, put as config option
 
             model = GoogLeNet(output_dim=output_size)
     else:

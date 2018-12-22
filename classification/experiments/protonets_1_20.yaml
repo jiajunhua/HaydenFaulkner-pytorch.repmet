@@ -8,6 +8,8 @@ model:
   id: '01'
   use_pretrained: False
 
+  emb_size: 64
+
 
 dataset:
   name: 'omniglot'
