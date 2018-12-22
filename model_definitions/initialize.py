@@ -19,7 +19,7 @@ def initialize_model(config, model_name, model_id):
         freeze_params(model)
         output_size = model.fc.in_features
         
-        model.fc = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)
+        model.fc = nn.Linear(output_size, config.model.emb_size)# Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)
 
         input_size = 224
 
@@ -31,7 +31,7 @@ def initialize_model(config, model_name, model_id):
         output_size = model.classifier[6].in_features
         
         # model.classifier[6] = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)  # nn.Linear(output_size, num_classes)
-        model.classifier = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)
+        model.classifier = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)
         input_size = 224
 
     elif model_name == "vgg":
@@ -41,7 +41,7 @@ def initialize_model(config, model_name, model_id):
         output_size = model.classifier[6].in_features
         
         # model.classifier[6] = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)  # nn.Linear(output_size, num_classes)
-        model.classifier = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)
+        model.classifier = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)
         input_size = 224
 
     elif model_name == "squeezenet":
@@ -52,7 +52,7 @@ def initialize_model(config, model_name, model_id):
         output_size = 512
         
         # model.classifier[1] = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)  # nn.Conv2d(512, num_classes, kernel_size=(1,1), stride=(1,1))
-        model.classifier = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)
+        model.classifier = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)
         model.num_classes = 1024 # num_classes
         input_size = 224
 
@@ -63,7 +63,7 @@ def initialize_model(config, model_name, model_id):
         freeze_params(model)
         output_size = model.classifier.in_features
         
-        model.classifier = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)  # nn.Linear(output_size, num_classes)
+        model.classifier = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)  # nn.Linear(output_size, num_classes)
         input_size = 224
 
     elif model_name == "inception":
@@ -74,10 +74,10 @@ def initialize_model(config, model_name, model_id):
         freeze_params(model)
         # Handle the auxilary net
         output_size = model.AuxLogits.fc.in_features
-        model.AuxLogits.fc = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)  # nn.Linear(output_size, num_classes)
+        model.AuxLogits.fc = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)  # nn.Linear(output_size, num_classes)
         # Handle the primary net
         output_size = model.fc.in_features
-        model.fc = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)  # nn.Linear(output_size, num_classes)
+        model.fc = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)  # nn.Linear(output_size, num_classes)
         input_size = 299
 
     elif model_name == "protonet":
@@ -113,7 +113,7 @@ def freeze_params(model, params=None, verbose=True):
             if params is None or param in params:
                 param.requires_grad = False
                 if verbose:
-                    print(name, " was frozen")
+                    print(name, " was frozen")  # TODO this never ends in densenet, can we put check in (either pass up changed or us timer)
             freeze_params(child)
 
 # def _test():
