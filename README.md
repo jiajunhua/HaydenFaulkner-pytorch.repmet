@@ -81,27 +81,42 @@ See `classification/train.py` for training the model, and the `classification/ex
 
 
 ## Datasets
-### Omniglot
+### [Omniglot](https://github.com/brendenlake/omniglot)
 This dataset contains 1623 different handwritten characters from 50 different alphabets.
 Each of the 1623 characters was drawn online via Amazon's Mechanical Turk by 20 different people.
 Images are greyscale and square 105 x 105 px.
 
+
 **Train:** 82240 samples spanning 4112 classes (avg 20 per class)
+
 **Val:** 13760 samples spanning 688 classes (avg 20 per class)
+
 **Test:** 33840 samples spanning 1692 classes (avg 20 per class)
 
 Note: Classes are mutually exclusive in the splits, for the few shot scenario.
 
-### Oxford Flowers
+### [Oxford Flowers](http://www.robots.ox.ac.uk/~vgg/data/flowers/102/)
 This dataset contains images of flowers, covering 102 classes with each class consisting of between 40 and 258 images.
 Images are RGB with shortest edge being 500px.
 
+
 **Train:** 1020 samples spanning 102 classes (avg 10 per class)
+
 **Val:** 1020 samples spanning 102 classes (avg 10 per class)
+
 **Test:** 6149 samples spanning 102 classes (avg 60 per class)
 
+### [Oxford Pets](http://www.robots.ox.ac.uk/~vgg/data/pets/)
+This dataset contains images of pet animals (cats and dogs), covering 37 classes with each class consisting of around 200 images.
+Images are RGB with different scales and ratios.
+
+
+**TrainVal:** 3680 samples spanning 37 classes (avg 99 per class)
+
+**Test:** 3669 samples spanning 37 classes (avg 99 per class)
+
 ### Coming Soon
-OxfordPet, StanfordDogs, PascalVoc, ImageNet
+StanfordDogs, PascalVoc, ImageNet
 
 
 ## Results
