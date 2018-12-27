@@ -79,29 +79,29 @@ pip install tensorboardX
 
 See `classification/train.py` for training the model, and the `classification/experiments` directory for the config `.yaml` files.
 
-### RepMet.v2
-There are two versions of the RepMet loss implemented in this code, as the original authors suggested this modification from the original paper.
-
-**Version 1:**
-As in the original paper it uses the closest (R*) representative in the numerator and disregards same class representatives in the denominator:
-
-![eq repmetv1](https://latex.codecogs.com/gif.latex?L%28%5CTheta%20%29%20%3D%20%5Cfrac%7B1%7D%7BN%7D%5Csum_%7Bn%3D1%7D%5E%7BN%7D%5Cleft%20%7C%20-%5Ctextup%7Blog%7D%20%5Cleft%20%28%20%5Cfrac%7Be%5E%7B-%5Cfrac%7B1%7D%7B2%5Csigma%5E2%7D%5Cleft%20%5C%7C%20E_n%20-%20R%5E*_n%20%5Cright%20%5C%7C%5E2_2%7D%7D%7B%5Cunderset%7Bi%3AC%28R_i%29%5Cneq%20C%28E_n%29%7D%5Csum%20e%5E%7B-%5Cfrac%7B1%7D%7B2%5Csigma%5E2%7D%5Cleft%20%5C%7C%20E_n%20-%20R_i%20%5Cright%20%5C%7C%5E2_2%7D%7D%20%5Cright%20%29%20&plus;%20%5Calpha%20%5Cright%20%7C_&plus;)
-
-where:
-
-![eq repmetv1b](https://latex.codecogs.com/gif.latex?R%5E*_n%20%3D%20%5Ctextup%7Barg%7D%20%5Cunderset%7Bi%3AC%28R_i%29%3DC%28E_n%29%7D%7B%5Ctextup%7Bmin%7D%7D%5Cleft%20%5C%7C%20E_n%20-%20R_i%20%5Cright%20%5C%7C)
-
-
-**Version 2:**
-Sums the distance of all representatives of the same class in the numerator, and doesn't disregard any in the denominator.
-
-![eq repmetv2](https://latex.codecogs.com/gif.latex?L%28%5CTheta%20%29%20%3D%20%5Cfrac%7B1%7D%7BN%7D%5Csum_%7Bn%3D1%7D%5E%7BN%7D%5Cleft%20%7C%20-%5Ctextup%7Blog%7D%20%5Cleft%20%28%20%5Cfrac%7B%5Cunderset%7Bi%3AC%28R_i%29%3D%20C%28E_n%29%7D%5Csum%20e%5E%7B-%5Cfrac%7B1%7D%7B2%5Csigma%5E2%7D%5Cleft%20%5C%7C%20E_n%20-%20R_i%20%5Cright%20%5C%7C%5E2_2%7D%7D%7B%5Cunderset%7Bi%7D%5Csum%20e%5E%7B-%5Cfrac%7B1%7D%7B2%5Csigma%5E2%7D%5Cleft%20%5C%7C%20E_n%20-%20R_i%20%5Cright%20%5C%7C%5E2_2%7D%7D%20%5Cright%20%29%20&plus;%20%5Calpha%20%5Cright%20%7C_&plus;)
-
 
 ## Datasets
-Currently Omniglot Supported
+### Omniglot
+This dataset contains 1623 different handwritten characters from 50 different alphabets.
+Each of the 1623 characters was drawn online via Amazon's Mechanical Turk by 20 different people.
+Images are greyscale and square 105 x 105 px.
 
-Soon OxfordFlowers, OxfordPet, StanfordDogs, PascalVoc, ImageNet
+**Train:** 82240 samples spanning 4112 classes (avg 20 per class)
+**Val:** 13760 samples spanning 688 classes (avg 20 per class)
+**Test:** 33840 samples spanning 1692 classes (avg 20 per class)
+
+Note: Classes are mutually exclusive in the splits, for the few shot scenario.
+
+### Oxford Flowers
+This dataset contains images of flowers, covering 102 classes with each class consisting of between 40 and 258 images.
+Images are RGB with shortest edge being 500px.
+
+**Train:** 1020 samples spanning 102 classes (avg 10 per class)
+**Val:** 1020 samples spanning 102 classes (avg 10 per class)
+**Test:** 6149 samples spanning 102 classes (avg 60 per class)
+
+### Coming Soon
+OxfordPet, StanfordDogs, PascalVoc, ImageNet
 
 
 ## Results
