@@ -123,7 +123,7 @@ class OxfordFlowersDataset(Dataset):
         elif self.split == 'test':
             split_samples = all_samples['tstid']
 
-        split_samples = list(split_samples[0])
+        split_samples = list(split_samples[0]-1)  # index at 0 not 1
         split_categories = list(all_categories[0][split_samples])
 
         # lets now add if they are in the category_subset iterable
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     set_working_dir()
 
     # load the dataset
-    dataset = OxfordFlowersDataset(root_dir=config.dataset.root_dir, categories_subset=[1, 2, 34])
+    dataset = OxfordFlowersDataset(root_dir=config.dataset.root_dir)
 
     # print the stats
     print(dataset.stats())
