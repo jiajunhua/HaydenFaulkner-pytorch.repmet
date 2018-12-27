@@ -1,11 +1,11 @@
 run_type: 'magnetloss'
-run_id: 'tester-02'
+run_id: 'tester-03'
 seed: 7
 
 model:
-  type: 'googlenet'
+  type: 'resnet'
   id: '01'
-  use_pretrained: False
+  use_pretrained: True
 
   emb_size: 64
 
@@ -22,7 +22,7 @@ train:
   checkpoint_every: 10  # this many epochs
 
   epochs: 100
-  learning_rate: 0.001
+  learning_rate: 0.01
 
   episodes: 10  # per epoch
   k: 1

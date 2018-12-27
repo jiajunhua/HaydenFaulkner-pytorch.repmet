@@ -574,7 +574,7 @@ def fit(config,
                                                               model=model,
                                                               optimizer=optimizer)
 
-    step = 0
+    step = start_epoch*len(dataloaders['train'])
     for epoch in range(start_epoch, config.train.epochs):
         print('Epoch {}/{}'.format(epoch, config.train.epochs - 1))
         print('-' * 10)

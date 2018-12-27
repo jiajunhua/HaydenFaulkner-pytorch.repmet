@@ -16,7 +16,7 @@ def initialize_model(config, model_name, model_id):
         """ Resnet18
         """
         model = models.resnet18(pretrained=config.model.use_pretrained)
-        freeze_params(model)
+        # freeze_params(model)
         output_size = model.fc.in_features
         
         model.fc = nn.Linear(output_size, config.model.emb_size)# Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)
