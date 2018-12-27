@@ -15,8 +15,9 @@ def initialize_dataset(config, dataset_name, dataset_id, split):
     elif dataset_name == 'flowers':
         if dataset_id == '00':  # default
             # Setup Transforms instead of doing in the specific dataset class
-            transforms = trns.Compose([trns.Resize((32, 32)),  # GoogLeNet size
-                                       trns.ToTensor()
+            transforms = trns.Compose([trns.Resize((224, 224)), #  imgnet size....trns.Resize((32, 32)),  # GoogLeNet size
+                                       trns.ToTensor(),
+                                       trns.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # normalise with model zoo
                                        ])
 
             return OxfordFlowersDataset(root_dir=config.dataset.root_dir,
