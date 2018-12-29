@@ -2,8 +2,9 @@
 
 class TensorBoard(object):
 
-    def __init__(self, every, tb_sw):
+    def __init__(self, every, config, tb_sw):
         self.every = every
+        self.config = config
         self.tb_sw = tb_sw
 
     def __call__(self, epoch, batch, step, model, dataloaders, losses, optimizer, data, stats):
@@ -19,6 +20,9 @@ class TensorBoard(object):
             for k, v in stats.items():
                 if k != 'sample_losses':
                     self.tb_sw.add_scalar(tag=k, scalar_value=v, global_step=step)
+
+            if self.config.train.loss == 'magnet':
+                self.tb_sw.add_scalar(tag='variances', scalar_value=losses['train'].variances[-1], global_step=step)
 
 
 class EmbeddingGrapher(object):
