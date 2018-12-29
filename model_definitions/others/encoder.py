@@ -20,12 +20,12 @@ class Encoder(nn.Module):
             if l == 0:
                 layer_input_size = input_size
             else:
-                layer_input_size = hidden_sizes[l]
+                layer_input_size = hidden_sizes[l-1]
 
             if l == self.num_layers-1:
                 layer_output_size = output_size
             else:
-                layer_output_size = hidden_sizes[l+1]
+                layer_output_size = hidden_sizes[l]
 
             self.hidden_layers.append(nn.Linear(layer_input_size, layer_output_size))
 
