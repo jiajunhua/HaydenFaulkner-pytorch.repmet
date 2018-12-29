@@ -62,6 +62,8 @@ class MagnetLoss(nn.Module):
 
         sample_costs = compute_euclidean_distance(cluster_means, expand_dims(self.r, 1))
 
+        self.sample_costs = sample_costs
+
         clusters_tensor = self.clusters.type(GPU_FLOAT_DTYPE)
         n_clusters_tensor = torch.arange(0, self.n_clusters).type(GPU_FLOAT_DTYPE)
 
