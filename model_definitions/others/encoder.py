@@ -11,7 +11,7 @@ class Encoder(nn.Module):
         self.input_size = input_size
         self.hidden_sizes = hidden_sizes
         self.output_size = output_size
-        self.num_layers = len(hidden_sizes)
+        self.num_layers = len(hidden_sizes) + 1
         self.softmax_final = softmax_final
         self.norm_final = norm_final
         self.hidden_layers = []
