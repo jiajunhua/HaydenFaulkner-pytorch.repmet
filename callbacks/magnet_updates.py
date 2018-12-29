@@ -15,7 +15,7 @@ class UpdateClusters(object):
             print('Updating Clusters')
             outputs = forward(model=model,
                               dataset=self.dataset,
-                              chunk_size=400)
+                              batch_size=400)
 
             self.dataloader.batch_sampler.update_clusters(outputs)
 
