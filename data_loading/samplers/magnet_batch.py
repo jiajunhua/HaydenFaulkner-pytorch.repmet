@@ -97,6 +97,8 @@ class MagnetBatchSampler(object):
         self.example_losses[self.batch_indexes] = losses
         self.has_loss[self.batch_indexes] = losses
 
+        epsilon = 1e-8
+
         # Find affected clusters and update the corresponding cluster losses
         clusters = np.unique(self.assignments[self.batch_indexes])
         for cluster in clusters:
@@ -105,10 +107,11 @@ class MagnetBatchSampler(object):
 
             # Take the average closs in the cluster of examples for which we have measured a loss
             inds = cluster_example_losses[self.has_loss[cluster_inds]]
+
             if len(inds) < 1:
-                self.cluster_losses[cluster] = 0.0
+                self.cluster_losses[cluster] = epsilon
             else:
-                self.cluster_losses[cluster] = np.mean(cluster_example_losses[self.has_loss[cluster_inds]])
+                self.cluster_losses[cluster] = np.mean(cluster_example_losses[self.has_loss[cluster_inds]]) + epsilon
 
     def gen_batch(self):
         """Sample a batch by first sampling a seed cluster proportionally to
