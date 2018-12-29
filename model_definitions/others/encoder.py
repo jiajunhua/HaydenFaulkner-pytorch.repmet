@@ -14,7 +14,7 @@ class Encoder(nn.Module):
         self.num_layers = len(hidden_sizes) + 1
         self.softmax_final = softmax_final
         self.norm_final = norm_final
-        self.hidden_layers = []
+        self.hidden_layers = nn.ModuleList([])
         assert self.num_layers >= 1
         for l in range(self.num_layers):
             if l == 0:
@@ -46,3 +46,4 @@ class Encoder(nn.Module):
         return '{}, {}, {}, softmax_final={}, norm_final={}'.format(
             self.input_size, self.hidden_sizes, self.output_size, self.softmax_final, self.norm_final
         )
+
