@@ -564,9 +564,6 @@ def fit(config,
 
     best_state = copy.deepcopy(model.state_dict())
     best_state = model.state_dict()
-    best_acc = 0
-
-    start_epoch = 0
 
     # Load Checkpoint?
     start_epoch, best_acc, model, optimizer = load_checkpoint(config=config,
