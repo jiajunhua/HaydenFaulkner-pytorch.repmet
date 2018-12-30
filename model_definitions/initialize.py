@@ -16,10 +16,16 @@ def initialize_model(config, model_name, model_id):
         """ Resnet18
         """
         model = models.resnet18(pretrained=config.model.use_pretrained)
-        # freeze_params(model)
+
+        # BE SURE TO NORMALISE, can do by replacing the fc layers
+        if model_id == '01':
+            freeze_params(model)
+        elif model_id == '02':
+            pass  # don't freeze
         output_size = model.fc.in_features
-        
-        model.fc = nn.Linear(output_size, config.model.emb_size)# Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)
+
+        model.fc = Encoder(input_size=output_size, hidden_sizes=[256, 256], output_size=config.model.emb_size)
+        # output_size = config.model.emb_size
 
         input_size = 224
 
