@@ -28,7 +28,7 @@ class MagnetLoss(nn.Module):
         total_loss: The total magnet loss for the batch.
         losses: The loss for each example in the batch.
     """
-    def __init__(self, m, d, alpha=1.0):
+    def __init__(self, m, d, alpha=1.0, L=128, style='closest'):
         super(MagnetLoss, self).__init__()
         self.r = None
         self.classes = None
@@ -36,11 +36,11 @@ class MagnetLoss(nn.Module):
         self.cluster_classes = None
         self.n_clusters = None
         self.alpha = alpha
+        self.L = L
+        self.style = style
         self.n_clusters = m
         self.examples_per_cluster = d
-        # self.variances = np.array([])
         self.variances = torch.tensor([0.0])
-        # self.variance = variance
 
     def forward(self, input, target):  # reps and classes, x and y
 
@@ -100,8 +100,45 @@ class MagnetLoss(nn.Module):
         losses = F.relu(-torch.log(numerator / (denominator + epsilon) + epsilon))
 
         total_loss = torch.mean(losses)
-        _, pred = sample_costs.min(1)
-        acc = pred.eq(clusters_tensor.type(GPU_LONG_DTYPE)).float().mean()
+
+
+        if self.style == 'closest':  # acts on the clusters in this batch/episode rather than those calculate over the entire set!!
+            _, pred = sample_costs.min(1)
+            acc = pred.eq(clusters_tensor.type(GPU_LONG_DTYPE)).float().mean()
+        else:
+            raise NotImplementedError
+            # TODO implement the version that takes into account variance
+            # TODO note it will still just be acc on batch rather than set... (unlike val)
+            # num_classes = len(np.unique(self.cluster_classes.cpu()))  # m # the number of classes in this batch
+            #
+            # num_clusters = cluster_means.size()[0]  # m*k
+            #
+            # # Sort the clusters by closest distance to sample
+            # sorted_sample_costs, indices = torch.sort(sample_costs)
+            # sorted_sample_costs = sorted_sample_costs.squeeze()
+            # indices = indices.type(GPU_LONG_DTYPE).squeeze()
+            # sorted_cluster_classes = self.cluster_classes[indices]
+            #
+            # # If L < num_clusters then lets only take the top L
+            # if self.L < num_clusters:
+            #     sorted_sample_costs = sorted_sample_costs[:self.L]
+            #     sorted_cluster_classes = sorted_cluster_classes[:self.L]
+            #     num_clusters = self.L
+            #
+            # normalised_costs = torch.exp(var_normalizer * sorted_sample_costs).type(GPU_FLOAT_DTYPE)
+            #
+            # per_class_costs = torch.zeros(num_classes, num_clusters).type(GPU_FLOAT_DTYPE)  # todo, address this issue of num_classes not matching batch_size and that being a problem...
+            # per_class_costs = per_class_costs.scatter_(0, sorted_cluster_classes.unsqueeze(0), normalised_costs.unsqueeze(0))
+            # numerator = per_class_costs.sum(1)
+            #
+            # denominator = torch.sum(normalised_costs)
+            #
+            # epsilon = 1e-8
+            #
+            # probs = numerator / (denominator + epsilon)
+            #
+            # _, pred = probs.max(0)
+            # acc = pred.eq(target).float()
         return total_loss, losses, pred, acc
 
 
@@ -151,7 +188,7 @@ class MagnetLossEval(nn.Module):
                 sorted_cluster_classes = sorted_cluster_classes[:self.L]
                 num_clusters = self.L
 
-            var_normalizer = -1 / (2 * self.variance ** 2)  # Todo the variance messes it up at the moment cause makes the nomaliser huge
+            var_normalizer = -1 / (2 * self.variance ** 2)
 
             normalised_costs = torch.exp(var_normalizer * sorted_sample_costs).type(GPU_FLOAT_DTYPE)
 
