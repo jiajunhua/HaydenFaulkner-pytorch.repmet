@@ -1,8 +1,8 @@
-from losses import PrototypicalLoss, MagnetLoss, MagnetLossEval
+from losses import PrototypicalLoss, MagnetLoss, MagnetLossEval#, CrossEntropyLoss
 
 
 def initialize_loss(config, loss_name, split='train'):
-
+    # losses must return loss, sample_losses, pred, acc
     if loss_name == 'prototypical':
         if split == 'train':
             return PrototypicalLoss(n_support=config.train.support_per_epi)
@@ -23,4 +23,9 @@ def initialize_loss(config, loss_name, split='train'):
             # give a predictor
         else:
             raise ValueError("Split '%s' not recognised for the %s loss." % (split, loss_name))
+    elif loss_name == 'ce':
+        # assumes output is a softmax
+        # TODO implemento
+        raise NotImplementedError
+        # return CrossEntropyLoss(softmaxed=False)
 
