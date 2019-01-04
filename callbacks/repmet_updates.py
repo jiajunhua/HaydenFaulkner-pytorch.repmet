@@ -26,10 +26,8 @@ class UpdateReps(object):
                 kmeans = KMeans(n_clusters=k, init='k-means++', n_init=1, max_iter=20)
                 kmeans.fit(class_examples)
 
-                # Save cluster centroids for finding impostor clusters
                 start = c * k
                 stop = (c+1) * k
-
                 losses['train'].reps.data[start:stop] = torch.Tensor(kmeans.cluster_centers_).cuda().float()
 
 
