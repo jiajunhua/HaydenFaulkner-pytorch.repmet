@@ -8,6 +8,7 @@ http://www.robots.ox.ac.uk/~vgg/data/flowers
 
 from __future__ import print_function
 
+import numpy as np
 from PIL import Image, ImageFile
 from os.path import join
 import os
@@ -56,6 +57,8 @@ class OxfordFlowersDataset(Dataset):
         # load the data samples for this split
         self.data, self.labels, self.categories = self.load_data_split(categories_subset=categories_subset)
         self.samples = list(zip(self.data, self.labels))
+
+        self.n_categories = len(np.unique(self.labels))
 
     def __len__(self):
         return len(self.samples)
