@@ -36,7 +36,7 @@ def make_one_hot(labels, n_classes):
     :return: a one hot vector with these class labels
     """
     one_hot = torch.zeros((labels.shape[-1], n_classes))
-    return one_hot.scatter_(1, torch.unsqueeze(labels, 1).long(), 1).byte()
+    return one_hot.scatter_(1, torch.unsqueeze(labels, 1).long().cpu(), 1).byte()
 
 
 def euclidean_dist(x, y):
@@ -49,7 +49,7 @@ def euclidean_dist(x, y):
     m = y.size(0)
     d = x.size(1)
     if d != y.size(1):
-        raise Exception
+        raise Exception("size mismatch")
 
     x = x.unsqueeze(1).expand(n, m, d)
     y = y.unsqueeze(0).expand(n, m, d)
