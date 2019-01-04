@@ -1,6 +1,3 @@
-
-import torch
-
 from utils.model_forward import forward
 from sklearn.cluster import KMeans
 
@@ -28,7 +25,8 @@ class UpdateReps(object):
 
                 start = c * k
                 stop = (c+1) * k
-                losses['train'].reps.data[start:stop] = torch.Tensor(kmeans.cluster_centers_).cuda().float()
+                # losses['train'].reps.data[start:stop] = torch.Tensor(kmeans.cluster_centers_).cuda().float()
+                losses['train'].set_reps(kmeans.cluster_centers_, start, stop)
 
 
 class UpdateValReps(object):

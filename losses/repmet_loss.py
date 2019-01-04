@@ -81,6 +81,15 @@ class RepmetLoss(nn.Module):
 
         return total_loss, losses, pred, acc
 
+    def set_reps(self):
+        return self.reps.data.cpu().detach().numpy()
+
+    def set_reps(self, reps, start=None, stop=None):
+        if start is not None and stop is not None:
+            self.reps.data[start:stop] = torch.Tensor(reps).cuda().float()
+        else:
+            # self.reps = nn.Parameter(torch.Tensor(reps, dtype=torch.float).cuda())
+            self.reps.data = torch.Tensor(reps).cuda().float()
 
 if __name__ == "__main__":
     print("Simple test of emb loss")
