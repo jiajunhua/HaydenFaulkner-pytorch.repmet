@@ -2,7 +2,7 @@ import torch
 import os
 
 
-def save_checkpoint(config, epoch, model, optimizer, best_acc, is_best, save_path='', tag='', ext='.pth.tar'):
+def save_checkpoint(config, epoch, model, optimizer, best_acc, is_best, reps=None, save_path='', tag='', ext='.pth.tar'):
 
     # If specific save path not specified lets make it the default
     if len(save_path) < 1:
@@ -17,7 +17,8 @@ def save_checkpoint(config, epoch, model, optimizer, best_acc, is_best, save_pat
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
         'best_acc': best_acc,
-        'is_best': is_best
+        'is_best': is_best,
+        'reps': reps
         }
 
     # replace slash if in tag so we don't get path errors, still though the user should play nice
@@ -43,6 +44,7 @@ def load_checkpoint(config, resume_from, model, optimizer):
     start_epoch = 0
     best_acc = 0
     file_path = -1
+    reps = None
 
     # Check we have been given a resume_from string
     if len(resume_from) > 0:
@@ -79,6 +81,7 @@ def load_checkpoint(config, resume_from, model, optimizer):
                 print("\nLoaded the best checkpoint '{}' (epoch {})\n".format(file_path, start_epoch))
             else:
                 print("\nLoaded checkpoint '{}' (epoch {})\n".format(file_path, start_epoch))
+            reps = checkpoint['reps']
         else:
             # if can't find file raise error
             raise FileNotFoundError("Can't find %s, maybe try latest (L) or best (B)" % file_path)
@@ -87,4 +90,4 @@ def load_checkpoint(config, resume_from, model, optimizer):
         # if we aren't given anything in resume_from then start training from scratch
         print("\nLearning model from scratch\n")
 
-    return start_epoch, best_acc, model, optimizer
+    return start_epoch, best_acc, model, optimizer, reps

@@ -81,7 +81,7 @@ class RepmetLoss(nn.Module):
 
         return total_loss, losses, pred, acc
 
-    def set_reps(self):
+    def get_reps(self):
         return self.reps.data.cpu().detach().numpy()
 
     def set_reps(self, reps, start=None, stop=None):
