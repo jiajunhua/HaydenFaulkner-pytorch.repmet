@@ -1,10 +1,9 @@
-
+import numpy as np
 
 class TensorBoard(object):
 
-    def __init__(self, every, config, tb_sw):
+    def __init__(self, every, tb_sw):
         self.every = every
-        self.config = config
         self.tb_sw = tb_sw
 
     def __call__(self, epoch, batch, step, model, dataloaders, losses, optimizer, data, stats):
@@ -21,7 +20,7 @@ class TensorBoard(object):
                 if k != 'sample_losses':
                     self.tb_sw.add_scalar(tag=k, scalar_value=v, global_step=step)
 
-            if self.config.train.loss == 'magnet':
+            if hasattr(losses['train'], 'variances'):
                 self.tb_sw.add_scalar(tag='variances', scalar_value=losses['train'].variances[-1], global_step=step)
 
 
@@ -37,8 +36,18 @@ class EmbeddingGrapher(object):
 
         if step % self.every == 0:
             inputs = data['inputs']
-            outputs = data['outputs']
+            outputs = data['outputs'].cpu().detach().numpy()
             labels = data['labels'].cpu().detach().numpy()
+
+            if hasattr(losses['train'], 'reps'):
+                reps = losses['train'].reps.data.cpu().detach().numpy()
+                outputs = np.vstack((outputs, reps))
+
+                N = losses['train'].N
+                k = losses['train'].k
+                rep_labels = ['R%d_%d' % (i, j) for i in range(N) for j in range(k)]
+                labels = list(labels)+rep_labels
+                self.label_image = False
 
             if self.label_image:
                 self.tb_sw.add_embedding(outputs, metadata=labels, label_img=inputs, global_step=step, tag=self.tag)
