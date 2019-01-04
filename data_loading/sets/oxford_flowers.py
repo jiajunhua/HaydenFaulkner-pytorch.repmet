@@ -68,7 +68,7 @@ class OxfordFlowersDataset(Dataset):
         sample_data, sample_target = self.samples[index]
 
         # load the image
-        x = self.load_img(join(join(self.root_dir, self.images_dir), "image_%05d.jpg" % sample_data))
+        x = self.load_img(join(join(self.root_dir, self.images_dir), "image_%05d.jpg" % (sample_data+1)))
         y = sample_target
 
         # perform the transforms
