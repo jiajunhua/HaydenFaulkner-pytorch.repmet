@@ -1,18 +1,24 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Function
 
-from utils.functions import make_one_hot
+from utils.functions import make_one_hot, euclidean_distance
 
 
 class RepmetLoss(nn.Module):
 
-    def __init__(self, alpha=1.0):
+    def __init__(self, N, k, emb_size, alpha=1.0, sigma=0.5):
         super(RepmetLoss, self).__init__()
+        self.N = N
+        self.k = k
+        self.emb_size = emb_size
         self.alpha = alpha
+        self.sigma = sigma
 
-    def forward(self, distances, labels, alpha=1.0):
+        # TODO mod this from hardcoded with the device
+        self.reps = nn.Parameter(F.normalize(torch.randn(N*k, emb_size, dtype=torch.float).cuda()))
+
+    def forward(self, input, target):
         """
         Equation (4) of repmet paper
 
@@ -21,74 +27,64 @@ class RepmetLoss(nn.Module):
         :param alpha:
         :return:
         """
+        # batch size
+        self.n_samples = len(target)
 
-        self.alpha = alpha
-
-        self.n_samples = distances.size()[0]
-        self.n_classes = distances.size()[1]
-        self.n_k = distances.size()[2]
+        # distances = euclidean_dist(input, F.normalize(self.reps))  # todo normalize the reps before dist? default no
+        distances = euclidean_distance(input, self.reps)
 
         # make mask with ones where correct class, zeros otherwise
-        mask = make_one_hot(labels, n_classes=self.n_classes)
-        mask_cor = mask.transpose(0, 1).repeat(1, self.n_k).view(-1, self.n_samples).transpose(0, 1)
+        mask = make_one_hot(target, n_classes=self.N).cuda()
+        mask_cor = mask.transpose(0, 1).repeat(1, self.k).view(-1, self.n_samples).transpose(0, 1)
         mask_inc = ~mask_cor
 
         valmax, argmax = distances.max(-1)
         valmax, argmax = valmax.max(-1)
+        valmax += 10
 
-        print(mask_inc.shape)
-        print(valmax.shape)
-        # print(valmax.view(5,self.n_classes*self.n_k).shape)
-        # t = mask_inc*valmax
+        cor = distances + (valmax*mask_inc.float())
+        inc = distances + (mask_cor.float()*valmax)
+        min_cor, _ = cor.min(1)
+        min_inc, _ = inc.min(1)
 
-        min_cor, _ = (distances + (valmax*mask_inc)).min(1)
-        min_inc, _ = (distances + (mask_cor*valmax)).min(1)
-
+        # Eqn. 4 of repmet paper
         losses = F.relu(min_cor - min_inc + self.alpha)
 
+        # mean the sample losses over the batch
         total_loss = torch.mean(losses)
 
-        return total_loss, losses
+        # Eqn. 1 of repmet paper
+        probs = torch.exp(- distances / (2 * self.sigma ** 2))  # todo is the dist meant to be squared?
 
-# class RepmetLossFunction(Function):
-#
-#     @staticmethod
-#     def forward(ctx, input, weight, distances, labels, alpha=1.0):
-#         """
-#         Equation (4) of repmet paper
-#
-#         :param dists: n_samples x n_classes x n_k
-#         :param labels: n_samples
-#         :param alpha:
-#         :return:
-#         """
-#
-#         n_samples = distances.size()[0]
-#         n_classes = distances.size()[1]
-#         n_k = distances.size()[2]
-#
-#         # make mask with ones where correct class, zeros otherwise
-#         mask = make_one_hot(labels, n_classes=n_classes)
-#         mask_cor = mask.transpose(0, 1).repeat(1, n_k).view(-1, n_samples).transpose(0, 1)
-#         mask_inc = ~mask_cor
-#
-#         valmax, argmax = distances.max(1)
-#
-#         min_cor, _ = (distances + (mask_inc*valmax)).min(1)
-#         min_inc, _ = (distances + (mask_cor*valmax)).min(1)
-#
-#         losses = F.relu(min_cor - min_inc + alpha)
-#
-#         total_loss = torch.mean(losses)
-#
-#         return total_loss, losses
-#
-#     @staticmethod
-#     def backward(ctx, grad_output):
+        # Eqn 2. of repmet paper
+        hard_probs, _ = probs.view(-1, self.N, self.k).max(2)
+
+        # Eqn 3. of repmet paper
+        back_p = 1 - hard_probs.max(1)[0]  # todo useful for detection
+
+        # classification (soft) version of eqn 2 (considers all the ks for a class) (eqn 5 of repmet paper)
+        numerator = probs.view(-1, self.N, self.k).sum(2)
+        denominator = numerator.sum(1).view(-1, 1)
+
+        epsilon = 1e-8
+
+        soft_probs = numerator / (denominator + epsilon) + epsilon
+
+        _, pred = soft_probs.max(1)
+        acc = pred.eq(target.squeeze()).float().mean()
+
+        # calc a second acc.. just the smallest distances, equiv if k=1
+        d = distances.view(-1, self.N, self.k)
+        dm, _ = d.min(2)
+        _, dma = dm.min(1)
+        acc_b = dma.eq(target.squeeze()).float().mean()
+
+        return total_loss, losses, pred, acc
+
 
 if __name__ == "__main__":
     print("Simple test of emb loss")
-    repmet = RepmetLoss()
+    repmet = RepmetLoss(N=3, k=2, emb_size=2)
 
     p = [[1, 0, 0],
          [1, 0, 0],
