@@ -681,7 +681,11 @@ def fit(config,
                 best_acc = avg_v_acc
                 # best_state = copy.deepcopy(model.state_dict())
                 best_state = model.state_dict()
-                save_checkpoint(config, epoch, model, optimizer, best_acc, is_best=True)
+                if hasattr(losses['train'], 'reps'):
+                    reps = losses['train'].get_reps()
+                else:
+                    reps = None
+                save_checkpoint(config, epoch, model, optimizer, best_acc, reps=reps, is_best=True)
 
             # End of validation callbacks
             for callback in callbacks['validation_end']:
