@@ -1,20 +1,20 @@
 run_type: 'repmet'
-run_id: 'repmet_flowers5_cos_sanity'
+run_id: 'repmet_flowers_1_12_4'
 seed: 7
 
 model:
   type: 'resnet'
-  id: '01'  # frozen
+  id: '01'  # 01: frozen, 02: unfrozen
   use_pretrained: True
 
-  emb_size: 3
-  dist: 'cos'
+  emb_size: 1024
+  dist: 'euc'
 
 
 dataset:
   name: 'flowers'
   id: '00'
-  classes: [1,2,3,4,5]
+
 
 train:
   sampler: 'episodes_repmet'
@@ -22,12 +22,12 @@ train:
 
   checkpoint_every: 10  # this many epochs
 
-  epochs: 100
-  learning_rate: 0.01
+  epochs: 60
+  learning_rate: 0.001
 
-  episodes: 10  # per epoch
+  episodes: 25  # per epoch
   k: 1
-  m: 3
+  m: 12
   d: 4
   alpha: 1.0
   sigma: 0.5
@@ -40,7 +40,7 @@ val:
   loss: 'repmet_c'
 
   episodes: 25  # per validation run, performed every 'every' epoch
-  m: 3  # 12
+  m: 12
   d: 4
   alpha: 1.0
   sigma: 0.5
@@ -54,8 +54,8 @@ test:  # will only do one epoch
   sampler: 'episodes_repmet'
   loss: 'repmet_c'
 
-  episodes: 25
-  m: 3  # 12
+  episodes: 500
+  m: 12
   d: 4
   alpha: 1.0
   sigma: 0.5
