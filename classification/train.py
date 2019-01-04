@@ -119,13 +119,15 @@ def train():
     losses = dict()
     losses['train'] = initialize_loss(config=config,
                                       loss_name=config.train.loss,
-                                      split='train')
+                                      split='train',
+                                      n_classes=datasets['train'].n_categories)
     losses['val'] = initialize_loss(config=config,
                                     loss_name=config.val.loss,
-                                    split='val')
+                                    split='val',
+                                    n_classes=datasets['val'].n_categories)
 
     # Setup Optimizer
-    optimizer = torch.optim.Adam(params=model.parameters(),
+    optimizer = torch.optim.Adam(params=(list(filter(lambda p: p.requires_grad, model.parameters())) + list(losses['train'].parameters())),
                                  lr=config.train.learning_rate)
 
     if config.run_type == 'protonets':  # TODO consider putting in a callback on epoch_end, but then need to pass lr_sch
@@ -566,10 +568,18 @@ def fit(config,
     best_state = model.state_dict()
 
     # Load Checkpoint?
-    start_epoch, best_acc, model, optimizer = load_checkpoint(config=config,
-                                                              resume_from=resume_from,
-                                                              model=model,
-                                                              optimizer=optimizer)
+    start_epoch, best_acc, model, optimizer, reps = load_checkpoint(config=config,
+                                                                    resume_from=resume_from,
+                                                                    model=model,
+                                                                    optimizer=optimizer)
+
+    if hasattr(losses['train'], 'reps') and reps is not None:
+        losses['train'].set_reps(reps)
+
+    for callback in callbacks['training_start']:
+        callback(0, 0, 0, model, dataloaders, losses, optimizer,
+                 data={},
+                 stats={})
 
     step = start_epoch*len(dataloaders['train'])
     for epoch in range(start_epoch, config.train.epochs):
@@ -687,13 +697,22 @@ def fit(config,
 
         # Checkpoint?
         if config.train.checkpoint_every > 0 and epoch % config.train.checkpoint_every == 0:
-            save_checkpoint(config, epoch, model, optimizer, best_acc, is_best=False)
+            if hasattr(losses['train'], 'reps'):
+                reps = losses['train'].get_reps()
+            else:
+                reps = None
+            save_checkpoint(config, epoch, model, optimizer, best_acc, reps=reps, is_best=False)
 
         print()
 
     time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+    print('Training complete in {:.0f}h {:.0f}m {:.0f}s'.format(time_elapsed // 3600, (time_elapsed % 3600) // 60, time_elapsed % 60))
     print('Best val Acc: {:4f}'.format(best_acc))
+
+    for callback in callbacks['training_end']:
+        callback(epoch, batch, step, model, dataloaders, losses, optimizer,
+                 data={},
+                 stats={})
 
     return model, best_state, best_acc, train_loss, train_acc, val_loss, val_acc
 

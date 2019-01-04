@@ -100,7 +100,8 @@ def evaluate():
     losses = dict()
     losses['test'] = initialize_loss(config=config,
                                      loss_name=config.test.loss,
-                                     split='test')
+                                     split='test',
+                                     n_classes=datasets['test'].n_categories)
 
     # Setup Metrics
     metrics = dict()
@@ -115,10 +116,14 @@ def evaluate():
 
 
     # Load model params
-    _, _, model, _ = load_checkpoint(config=config,
+    _, _, model, _, reps = load_checkpoint(config=config,
                                      resume_from=config.test.resume_from,
                                      model=model,
                                      optimizer=None)
+
+
+    if hasattr(losses['test'], 'reps') and reps is not None:
+        losses['test'].set_reps(reps)
 
     perform(config=config,
             model=model,
