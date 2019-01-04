@@ -76,6 +76,8 @@ class OmniglotDataset(Dataset):
         self.data, self.labels, self.categories = self.load_data_split(categories_subset=categories_subset)
         self.samples = list(zip(self.data, self.labels))
 
+        self.n_categories = len(np.unique(self.labels))
+
     def __len__(self):
         return len(self.samples)
 
