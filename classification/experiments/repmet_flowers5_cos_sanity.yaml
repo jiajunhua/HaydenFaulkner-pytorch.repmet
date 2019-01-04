@@ -1,5 +1,5 @@
 run_type: 'repmet'
-run_id: 'repmet_flowers_test'
+run_id: 'repmet_flowers5_cos_sanity'
 seed: 7
 
 model:
@@ -8,6 +8,7 @@ model:
   use_pretrained: True
 
   emb_size: 3
+  dist: 'cos'
 
 
 dataset:
@@ -61,6 +62,6 @@ test:  # will only do one epoch
 
 
 vis:
-  every: 1  # update tensorboard every x steps (episodes)
+  every: 10  # update tensorboard every x steps (episodes)
   plot_embed_every: 10  # update tensorboard projector every x steps (episodes) (Train and Val)
   test_plot_embed_every: 10  # update tensorboard projector every x steps (episodes) (Test)
