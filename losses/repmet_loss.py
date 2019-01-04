@@ -31,6 +31,8 @@ class RepmetLoss(nn.Module):
         # batch size
         self.n_samples = len(target)
 
+        # self.reps.data = F.normalize(self.reps)
+
         # distances = euclidean_dist(input, F.normalize(self.reps))  # todo normalize the reps before dist? default no
         if self.dist == 'cos':
             distances = cosine_distance(input, self.reps)
