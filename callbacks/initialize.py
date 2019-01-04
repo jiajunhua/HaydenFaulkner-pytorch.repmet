@@ -5,18 +5,21 @@ from tensorboardX import SummaryWriter
 
 from callbacks.tensorboard import TensorBoard, EmbeddingGrapher
 from callbacks.magnet_updates import UpdateClusters, UpdateLosses, SetClusterMeans, SetEvalVariance
+from callbacks.repmet_updates import UpdateReps, UpdateValReps
 
 
 def initialize_callbacks(config, model, datasets, samplers, dataloaders, losses, optimizer):
 
-    callbacks = {'epoch_start': [],
+    callbacks = {'training_start': [],
+                 'epoch_start': [],
                  'batch_start': [],
                  'batch_end': [],
                  'validation_start': [],
                  'validation_batch_start': [],
                  'validation_batch_end': [],
                  'validation_end': [],
-                 'epoch_end': []
+                 'epoch_end': [],
+                 'training_end': []
                  }
 
     # init the tensorboard summary writer that we will write to with callbacks
@@ -53,7 +56,21 @@ def initialize_callbacks(config, model, datasets, samplers, dataloaders, losses,
         callbacks['validation_end'] = [TensorBoard(every=config.vis.every, config=config, tb_sw=tb_sw),
                                        EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='val', label_image=True)]
 
+    elif config.run_type == 'repmet':
+        callbacks['training_start'] = [UpdateReps(every=1, dataset=datasets['train'])]
+
+        callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
+                                  EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='train', label_image=True)]
+
+        callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
+
+        callbacks['validation_start'] = [UpdateValReps(every=1)]
+        callbacks['validation_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
+                                       EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='val',
+                                                        label_image=True)]
+
+
     else:
-        warnings.warn("config.run_type not recognised, no callbacks initialised.")
+        warnings.warn(config.run_type + "not recognised, no callbacks initialised.")
 
     return callbacks
