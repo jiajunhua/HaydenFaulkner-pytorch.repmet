@@ -13,9 +13,11 @@ class UpdateClusters(object):
     def __call__(self, epoch, batch, step, model, dataloaders, losses, optimizer, data, stats):
         if step % self.every == 0:
             print('Updating Clusters')
-            outputs = forward(model=model,
-                              dataset=self.dataset,
-                              batch_size=400)
+            outputs, labels = forward(model=model,
+                                      dataset=self.dataset,
+                                      batch_size=400)
+
+            # todo check these labels match those in the batch sampler
 
             self.dataloader.batch_sampler.update_clusters(outputs)
 
