@@ -39,12 +39,16 @@ class EmbeddingGrapher(object):
             outputs = data['outputs'].cpu().detach().numpy()
             labels = data['labels'].cpu().detach().numpy()
 
-            if hasattr(losses['train'], 'reps'):
-                reps = losses['train'].reps.data.cpu().detach().numpy()
+            if 'test' in losses.keys():
+                lk = 'test'
+            else:
+                lk = 'train'
+            if hasattr(losses[lk], 'reps'):
+                reps = losses[lk].get_reps()
                 outputs = np.vstack((outputs, reps))
 
-                N = losses['train'].N
-                k = losses['train'].k
+                N = losses[lk].N
+                k = losses[lk].k
                 rep_labels = ['R%d_%d' % (i, j) for i in range(N) for j in range(k)]
                 labels = list(labels)+rep_labels
                 self.label_image = False
