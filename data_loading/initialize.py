@@ -22,7 +22,8 @@ def initialize_dataset(config, dataset_name, dataset_id, split):
 
             return OxfordFlowersDataset(root_dir=config.dataset.root_dir,
                                         split=split,
-                                        transform=transforms)
+                                        transform=transforms,
+                                        categories_subset=config.dataset.classes)
     elif dataset_name == 'pets':
         if dataset_id == '00':  # default
             # Setup Transforms instead of doing in the specific dataset class
@@ -75,6 +76,24 @@ def initialize_sampler(config, sampler_name, dataset, split):
             return EpisodeBatchSampler(labels=dataset.labels,
                                        categories_per_epi=config.test.categories_per_epi,
                                        num_samples=config.test.support_per_epi+config.test.query_per_epi,
+                                       episodes=config.test.episodes)
+        else:
+            raise ValueError("Split '%s' not recognised for the %s sampler." % (split, sampler_name))
+    elif sampler_name == 'episodes_repmet':
+        if split == 'train':
+            return EpisodeBatchSampler(labels=dataset.labels,
+                                       categories_per_epi=config.train.m,
+                                       num_samples=config.train.d,
+                                       episodes=config.train.episodes)
+        elif split == 'val':
+            return EpisodeBatchSampler(labels=dataset.labels,
+                                       categories_per_epi=config.val.m,
+                                       num_samples=config.val.d,
+                                       episodes=config.val.episodes)
+        elif split == 'test':
+            return EpisodeBatchSampler(labels=dataset.labels,
+                                       categories_per_epi=config.test.m,
+                                       num_samples=config.test.d,
                                        episodes=config.test.episodes)
         else:
             raise ValueError("Split '%s' not recognised for the %s sampler." % (split, sampler_name))
