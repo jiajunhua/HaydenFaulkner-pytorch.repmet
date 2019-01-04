@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from torchvision import models
 
@@ -22,9 +23,10 @@ def initialize_model(config, model_name, model_id):
             freeze_params(model)
         elif model_id == '02':
             pass  # don't freeze
+
         output_size = model.fc.in_features
 
-        model.fc = Encoder(input_size=output_size, hidden_sizes=[256, 256], output_size=config.model.emb_size)
+        model.fc = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=config.model.emb_size)
         # output_size = config.model.emb_size
 
         input_size = 224
