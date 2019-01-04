@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 
 
 def expand_dims(var, dim=0):
@@ -24,10 +25,6 @@ def dynamic_partition(X, n_clusters):
     return cluster_bin
 
 
-def compute_euclidean_distance(x, y):
-    return torch.sum((x - y)**2, dim=2)
-
-
 def make_one_hot(labels, n_classes):
     """
 
@@ -39,7 +36,7 @@ def make_one_hot(labels, n_classes):
     return one_hot.scatter_(1, torch.unsqueeze(labels, 1).long().cpu(), 1).byte()
 
 
-def euclidean_dist(x, y):
+def euclidean_distance(x, y):
     '''
     Compute euclidean distance between two tensors
     '''
@@ -55,3 +52,8 @@ def euclidean_dist(x, y):
     y = y.unsqueeze(0).expand(n, m, d)
 
     return torch.pow(x - y, 2).sum(2)
+
+
+def cosine_distance(x, y):
+    return F.cosine_similarity(x, y)
+    # return F.cosine_similarity(x.transpose(0, 1).unsqueeze(0), y.unsqueeze(2))
