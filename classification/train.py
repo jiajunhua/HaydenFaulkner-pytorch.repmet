@@ -156,6 +156,7 @@ def train():
 
 
     fit(config=config,
+        logger=logger,
         model=model,
         dataloaders=dataloaders,
         losses=losses,
@@ -550,6 +551,7 @@ def train():
 
 
 def fit(config,
+        logger,
         model,
         dataloaders,
         losses,
@@ -584,7 +586,9 @@ def fit(config,
     step = start_epoch*len(dataloaders['train'])
     for epoch in range(start_epoch, config.train.epochs):
         print('Epoch {}/{}'.format(epoch, config.train.epochs - 1))
+        logger.info('Epoch {}/{}'.format(epoch, config.train.epochs - 1))
         print('-' * 10)
+        logger.info('-' * 10)
 
         for callback in callbacks['epoch_start']:
             callback(epoch, 0, step, model, dataloaders, losses, optimizer,
@@ -626,7 +630,7 @@ def fit(config,
             for callback in callbacks['batch_end']:
                 callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                          data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
-                         stats={'Training Loss': train_loss[-1], 'Training Acc': train_acc[-1],
+                         stats={'Training_Loss': train_loss[-1], 'Training_Acc': train_acc[-1],
                                 'sample_losses': sample_losses})
 
             batch += 1
@@ -636,6 +640,7 @@ def fit(config,
         avg_acc = np.mean(train_acc[-batch:])
 
         print('Avg Training Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
+        logger.info('Avg Training Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
         if lr_scheduler:
             lr_scheduler.step()
 
@@ -667,7 +672,7 @@ def fit(config,
                 for callback in callbacks['validation_batch_end']:
                     callback(epoch, batch, step, model, dataloaders, losses, optimizer,  # todo should we make this v_batch?
                              data={'inputs': v_inputs, 'outputs': v_outputs, 'labels': v_labels},
-                             stats={'Validation Loss': val_loss[-1], 'Validation Acc': val_acc[-1]})
+                             stats={'Validation_Loss': val_loss[-1], 'Validation_Acc': val_acc[-1]})
 
                 v_batch += 1
 
@@ -675,6 +680,7 @@ def fit(config,
             avg_v_acc = np.mean(val_acc)
 
             print('Avg Validation Loss: {:.4f} Acc: {:.4f}'.format(avg_v_loss, avg_v_acc))
+            logger.info('Avg Validation Loss: {:.4f} Acc: {:.4f}'.format(avg_v_loss, avg_v_acc))
 
             # Best validation accuracy yet?
             if avg_v_acc > best_acc:
@@ -691,13 +697,13 @@ def fit(config,
             for callback in callbacks['validation_end']:
                 callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                          data={'inputs': v_inputs, 'outputs': v_outputs, 'labels': v_labels},
-                         stats={'Avg Validation Loss': avg_v_loss, 'Avg Validation Acc': avg_v_acc})
+                         stats={'Avg_Validation_Loss': avg_v_loss, 'Avg_Validation_Acc': avg_v_acc})
 
         # End of epoch callbacks
         for callback in callbacks['epoch_end']:
             callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                      data={'inputs': inputs, 'outputs': outputs, 'labels': labels},
-                     stats={'Avg Training Loss': avg_loss, 'Avg Training Acc': avg_acc})
+                     stats={'Avg_Training_Loss': avg_loss, 'Avg_Training_Acc': avg_acc})
 
         # Checkpoint?
         if config.train.checkpoint_every > 0 and epoch % config.train.checkpoint_every == 0:
@@ -711,7 +717,9 @@ def fit(config,
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}h {:.0f}m {:.0f}s'.format(time_elapsed // 3600, (time_elapsed % 3600) // 60, time_elapsed % 60))
+    logger.info('Training complete in {:.0f}h {:.0f}m {:.0f}s'.format(time_elapsed // 3600, (time_elapsed % 3600) // 60, time_elapsed % 60))
     print('Best val Acc: {:4f}'.format(best_acc))
+    logger.info('Best val Acc: {:4f}'.format(best_acc))
 
     for callback in callbacks['training_end']:
         callback(epoch, batch, step, model, dataloaders, losses, optimizer,
