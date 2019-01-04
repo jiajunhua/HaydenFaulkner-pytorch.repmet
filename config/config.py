@@ -25,6 +25,7 @@ config.model.type = None
 config.model.id = None
 
 config.model.emb_size = ''
+config.model.dist = 'euc'
 
 config.model.backbone = edict()
 config.model.backbone.name = ''  # What model spec to use for the backbone, if backbone nec

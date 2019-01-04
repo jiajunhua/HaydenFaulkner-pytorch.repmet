@@ -2,18 +2,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.functions import make_one_hot, euclidean_distance
+from utils.functions import make_one_hot, euclidean_distance, cosine_distance
 
 
 class RepmetLoss(nn.Module):
 
-    def __init__(self, N, k, emb_size, alpha=1.0, sigma=0.5):
+    def __init__(self, N, k, emb_size, alpha=1.0, sigma=0.5, dist='euc'):
         super(RepmetLoss, self).__init__()
         self.N = N
         self.k = k
         self.emb_size = emb_size
         self.alpha = alpha
         self.sigma = sigma
+        self.dist = dist
 
         # TODO mod this from hardcoded with the device
         self.reps = nn.Parameter(F.normalize(torch.randn(N*k, emb_size, dtype=torch.float).cuda()))
@@ -31,7 +32,11 @@ class RepmetLoss(nn.Module):
         self.n_samples = len(target)
 
         # distances = euclidean_dist(input, F.normalize(self.reps))  # todo normalize the reps before dist? default no
-        distances = euclidean_distance(input, self.reps)
+        if self.dist == 'cos':
+            distances = cosine_distance(input, self.reps)
+        else:
+            distances = euclidean_distance(input, self.reps)
+
 
         # make mask with ones where correct class, zeros otherwise
         mask = make_one_hot(target, n_classes=self.N).cuda()

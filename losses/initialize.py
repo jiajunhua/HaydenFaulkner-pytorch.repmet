@@ -27,13 +27,13 @@ def initialize_loss(config, loss_name, split='train', n_classes=None):
         assert n_classes is not None
         if split == 'train':
             return RepmetLoss(N=n_classes, k=config.train.k, emb_size=config.model.emb_size,
-                              alpha=config.train.alpha, sigma=config.train.sigma)
+                              alpha=config.train.alpha, sigma=config.train.sigma, dist=config.model.dist)
         elif split == 'val':
             return RepmetLoss(N=n_classes, k=config.train.k, emb_size=config.model.emb_size,
-                              alpha=config.val.alpha, sigma=config.val.sigma)
+                              alpha=config.val.alpha, sigma=config.val.sigma, dist=config.model.dist)
         elif split == 'test':
             return RepmetLoss(N=n_classes, k=config.train.k, emb_size=config.model.emb_size,
-                              alpha=config.test.alpha, sigma=config.test.sigma)
+                              alpha=config.test.alpha, sigma=config.test.sigma, dist=config.model.dist)
         else:
             raise ValueError("Split '%s' not recognised for the %s loss." % (split, loss_name))
     elif loss_name == 'ce':

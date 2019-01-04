@@ -55,5 +55,12 @@ def euclidean_distance(x, y):
 
 
 def cosine_distance(x, y):
-    return F.cosine_similarity(x, y)
-    # return F.cosine_similarity(x.transpose(0, 1).unsqueeze(0), y.unsqueeze(2))
+    # x: N x D
+    # y: M x D
+    d = x.size(1)
+    if d != y.size(1):
+        raise Exception("size mismatch")
+
+    x = x.transpose(0, 1).unsqueeze(0)
+    y = y.unsqueeze(2)
+    return - (F.cosine_similarity(y, x)-1).transpose(0, 1)  # (range of 0 - 2)
