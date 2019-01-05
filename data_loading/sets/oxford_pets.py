@@ -133,8 +133,14 @@ class OxfordPetsDataset(Dataset):
 
         lines = [line.rstrip().split() for line in lines]
         for line in lines:
-            data.append(line[0])
-            categories.append(line[1])
+            category = int(line[1])
+            if categories_subset:
+                if category in categories_subset:
+                    data.append(line[0])
+                    categories.append(category)
+            else:  # categories_subset is None so add all
+                data.append(line[0])
+                categories.append(category)
 
         # Build categories to labels (cats can be names, labels are ints starting from 0)
         self.categories_to_labels = {}
@@ -199,7 +205,7 @@ if __name__ == "__main__":
     set_working_dir()
 
     # load the dataset
-    dataset = OxfordPetsDataset(root_dir=config.dataset.root_dir)
+    dataset = OxfordPetsDataset(root_dir=config.dataset.root_dir, categories_subset=[1,2,3])
 
     # print the stats
     print(dataset.stats())
