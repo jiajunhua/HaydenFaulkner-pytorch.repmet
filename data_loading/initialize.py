@@ -2,7 +2,7 @@ from torchvision import transforms as trns
 from torchvision.datasets import MNIST
 
 from data_loading.samplers import EpisodeBatchSampler, MagnetBatchSampler
-from data_loading.sets import OmniglotDataset, OxfordFlowersDataset, OxfordPetsDataset
+from data_loading.sets import OmniglotDataset, OxfordFlowersDataset, OxfordPetsDataset, StanfordDogsDataset
 
 
 def initialize_dataset(config, dataset_name, dataset_id, split):
@@ -33,8 +33,21 @@ def initialize_dataset(config, dataset_name, dataset_id, split):
                                        ])
 
             return OxfordPetsDataset(root_dir=config.dataset.root_dir,
-                                        split=split,
-                                        transform=transforms)
+                                     split=split,
+                                     transform=transforms,
+                                     categories_subset=config.dataset.classes)
+    elif dataset_name == 'dogs':
+        if dataset_id == '00':  # default
+            # Setup Transforms instead of doing in the specific dataset class
+            transforms = trns.Compose([trns.Resize((224, 224)), #  imgnet size....trns.Resize((32, 32)),  # GoogLeNet size
+                                       trns.ToTensor(),
+                                       trns.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # normalise with model zoo
+                                       ])
+
+            return StanfordDogsDataset(root_dir=config.dataset.root_dir,
+                                       split=split,
+                                       transform=transforms,
+                                       categories_subset=config.dataset.classes)
 
     elif dataset_name == 'mnist':
         if dataset_id == '00':
