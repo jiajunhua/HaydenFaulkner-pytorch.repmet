@@ -214,8 +214,8 @@ Model checkpoints will be available soon
 
 | Model (`.yaml`)                | Backbone    | Frozen  |  k  |  m  |  d  |     | *Original Paper* | *This Code**  |
 | :----------------------------- | ----------- | ------- | --- | --- | --- | --- | ---------------: | ------------: |
-| `repmet_flowers_1_12_4_r18F`**   | Resnet18    | `true`  |  1  | 12  |  4  |     |                - |        84.95% |
-| `repmet_flowers_3_12_4_inc3l`  | InceptionV3 | `false` |  3  | 12  |  4  |     |            93.1% |             % |
+| `repmet_pets_r18F_1_12_4`**    | Resnet18    | `true`  |  1  | 12  |  4  |     |                - |        84.95% |
+| `repmet_pets_3_12_4_inc3l`     | InceptionV3 | `false` |  3  | 12  |  4  |     |            93.1% |             % |
 
 *One test run of 500 episodes
 
