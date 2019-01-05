@@ -31,7 +31,8 @@ def initialize_dataset(config, dataset_name, dataset_id, split, input_size):
                                        trns.ToTensor(),
                                        trns.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # normalise with model zoo
                                        ])
-
+            if split == 'train':
+                split = 'trainval'
             return OxfordPetsDataset(root_dir=config.dataset.root_dir,
                                      split=split,
                                      transform=transforms,

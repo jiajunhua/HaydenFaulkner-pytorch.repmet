@@ -82,6 +82,8 @@ class OxfordPetsDataset(Dataset):
         if self.target_transform:
             y = self.target_transform(y)
 
+        assert x.shape[0] == 3
+
         return x, y
 
     def download(self, force=False):
@@ -169,9 +171,7 @@ class OxfordPetsDataset(Dataset):
         # todo either turn image to tensor in transform or do here
         # Load the image
         ImageFile.LOAD_TRUNCATED_IMAGES = True
-        image = Image.open(path)#.convert('RGB')
-
-
+        image = Image.open(path).convert('RGB')
 
         return image
 
