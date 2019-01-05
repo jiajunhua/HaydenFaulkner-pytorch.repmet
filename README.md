@@ -203,7 +203,7 @@ Model checkpoints will be available soon
 | `repmet_flowers_1_12_4`        | Resnet18    | `true`  |  1  | 12  |  4  |     |                - |        75.35% |
 | `repmet_flowers_3_12_4`        | Resnet18    | `true`  |  3  | 12  |  4  |     |                - |        76.18% |
 | `repmet_flowers_3_12_4_r18l`** | Resnet18    | `false` |  3  | 12  |  4  |     |                - |        44.70% |
-| `repmet_flowers_3_12_4_inc3l`  | InceptionV3 | `false` |  3  | 12  |  4  |     |            79.0% |             % |
+| `repmet_flowers_3_12_4_inc3l`  | InceptionV3 | `false` |  3  | 12  |  4  |     |            89.0% |             % |
 
 *One test run of 500 episodes
 
