@@ -159,12 +159,16 @@ Model checkpoints will be available soon
 
 | Model (`.yaml`)                | Epochs | Steps | Total Time | GPU Memory | Line |
 | :----------------------------- | -----: | ----: | ---------: | ---------: | ---- |
-| `repmet_flowers_1_12_4`        |     60 |  1490 |   00:32:17 |     1.1 GB |      |
-| `repmet_flowers_3_12_4`        |     60 |  1490 |   00:33:45 |     1.3 GB |      |
+| `repmet_flowers_1_12_4`        |     60 |  1500 |   00:32:17 |     1.1 GB |      |
+| `repmet_flowers_3_12_4`        |     60 |  1500 |   00:33:45 |     1.3 GB |      |
 | `repmet_flowers_3_12_4_r18l`   |    150 |  3750 |   01:28:26 |     3.5 GB |      |
 | `repmet_flowers_3_12_4_inc3l`  |        |       |            |            |      |
 
+**Pets (Training Set):**
 
+| Model (`.yaml`)                | Epochs | Steps | Total Time | GPU Memory | Line |
+| :----------------------------- | -----: | ----: | ---------: | ---------: | ---- |
+| `repmet_flowers_1_12_4_r18F`   |    100 |  2500 |   00:25:29 |     ?.? GB |      |
 
 
 ## Results
@@ -204,5 +208,17 @@ Model checkpoints will be available soon
 *One test run of 500 episodes
 
 **Currently overfits, investigating
+
+
+**Pets (Test Set):**
+
+| Model (`.yaml`)                | Backbone    | Frozen  |  k  |  m  |  d  |     | *Original Paper* | *This Code**  |
+| :----------------------------- | ----------- | ------- | --- | --- | --- | --- | ---------------: | ------------: |
+| `repmet_flowers_1_12_4_r18F`**   | Resnet18    | `true`  |  1  | 12  |  4  |     |                - |        84.95% |
+| `repmet_flowers_3_12_4_inc3l`  | InceptionV3 | `false` |  3  | 12  |  4  |     |            93.1% |             % |
+
+*One test run of 500 episodes
+
+**No Validation set, so might be overfitting, will rerun with val
 
 Model checkpoints will be available soon
