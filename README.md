@@ -115,8 +115,56 @@ Images are RGB with different scales and ratios.
 
 **Test:** 3669 samples spanning 37 classes (avg 99 per class)
 
+### [Stanford Dogs](http://vision.stanford.edu/aditya86/ImageNetDogs/)
+This dataset contains images of 120 breeds of dogs with each class consisting of around 170 images.
+Images are RGB with different scales and ratios.
+
+
+**Train:** 12000 samples spanning 120 classes (avg 100 per class)
+
+**No Val set**
+
+**Test:** 8580 samples spanning 120 classes (avg 71 per class)
+
 ### Coming Soon
-StanfordDogs, PascalVoc, ImageNet
+PascalVoc, ImageNet
+
+## Training Behaviour
+Time format: HH:MM:SS
+
+GPU Used: GTX 980 Ti
+
+GPU Memory calculation is an upper bound.
+
+### Prototypical Networks
+
+**Omniglot:**
+
+| Model (`.yaml`)  | Epochs | Steps | Total Time | GPU Memory | Line |
+| :--------------- | -----: | ----: | ---------: | ---------: | ---- |
+| `protonets_1_5`  |    100 | 10000 |   00:24:12 |     1.1 GB |      |
+| `protonets_5_5`  |    100 | 10000 |   00:32:33 |     1.4 GB |      |
+| `protonets_1_20` |    100 | 10000 |   00:31:27 |     1.4 GB |      |
+| `protonets_5_20` |    100 | 10000 |   00:44:14 |     1.3 GB |      |
+
+Model checkpoints will be available soon
+
+### Magnet Loss
+
+**COMING SOON** - Had some issues with training as backbone net unavailable.
+
+### RepMet
+
+**Flowers (Training Set):**
+
+| Model (`.yaml`)                | Epochs | Steps | Total Time | GPU Memory | Line |
+| :----------------------------- | -----: | ----: | ---------: | ---------: | ---- |
+| `repmet_flowers_1_12_4`        |     60 |  1490 |   00:32:17 |     1.1 GB |      |
+| `repmet_flowers_3_12_4`        |     60 |  1490 |   00:33:45 |     1.3 GB |      |
+| `repmet_flowers_3_12_4_r18l`   |    150 |  3750 |   01:28:26 |     3.5 GB |      |
+| `repmet_flowers_3_12_4_inc3l`  |        |       |            |            |      |
+
+
 
 
 ## Results
@@ -127,11 +175,12 @@ These results are calculated with `classification/evaluate.py`
 
 **Omniglot (Test Set):**
 
-| Model            |  1-Shot, 5-way  |  5-Shot, 5-way  |  1-Shot, 20-way  |  5-Shot, 20-way  |
-| ---------------- | --------------: | --------------: | ---------------: | ---------------: |
-| `.yaml` file     | `protonets_1_5` | `protonets_5_5` | `protonets_1_20` | `protonets_5_20` |
-| *Original Paper* |           98.8% |           99.7% |            96.0% |            98.9% |
-| *This Code* *    |          98.85% |          99.69% |           94.74% |           98.49% |
+| Model (`.yaml`)  | Shot  |  Way  |     | *Original Paper* | *This Code**  |
+| :--------------- | ----- | ----- | --- | ---------------: | ------------: |
+| `protonets_1_5`  |   1   |   5   |     |            98.8% |        98.81% |
+| `protonets_5_5`  |   5   |   5   |     |            99.7% |        99.56% |
+| `protonets_1_20` |   1   |   20  |     |            96.0% |        94.81% |
+| `protonets_5_20` |   5   |   20  |     |            98.9% |        98.51% |
 
 *One test run of 100 episodes
 
@@ -139,4 +188,21 @@ Model checkpoints will be available soon
 
 ### Magnet Loss
 
-**COMING SOON**
+**COMING SOON** - Had some issues with training as backbone net unavailable.
+
+### RepMet
+
+**Flowers (Test Set):**
+
+| Model (`.yaml`)                | Backbone    | Frozen  |  k  |  m  |  d  |     | *Original Paper* | *This Code**  |
+| :----------------------------- | ----------- | ------- | --- | --- | --- | --- | ---------------: | ------------: |
+| `repmet_flowers_1_12_4`        | Resnet18    | `true`  |  1  | 12  |  4  |     |                - |        75.35% |
+| `repmet_flowers_3_12_4`        | Resnet18    | `true`  |  3  | 12  |  4  |     |                - |        76.18% |
+| `repmet_flowers_3_12_4_r18l`** | Resnet18    | `false` |  3  | 12  |  4  |     |                - |        44.70% |
+| `repmet_flowers_3_12_4_inc3l`  | InceptionV3 | `false` |  3  | 12  |  4  |     |            79.0% |             % |
+
+*One test run of 500 episodes
+
+**Currently overfits, investigating
+
+Model checkpoints will be available soon
