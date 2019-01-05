@@ -85,25 +85,28 @@ def train():
                                            dataset_id=config.dataset.id,
                                            split='train',
                                            input_size=input_size)
-    datasets['val'] = initialize_dataset(config=config,
-                                         dataset_name=config.dataset.name,
-                                         dataset_id=config.dataset.id,
-                                         split='val',
-                                         input_size=input_size)
+    if config.val.every > 0:
+        datasets['val'] = initialize_dataset(config=config,
+                                             dataset_name=config.dataset.name,
+                                             dataset_id=config.dataset.id,
+                                             split='val',
+                                             input_size=input_size)
 
     samplers = dict()
     samplers['train'] = initialize_sampler(config=config,
                                            sampler_name=config.train.sampler,
                                            dataset=datasets['train'],
                                            split='train')
-    samplers['val'] = initialize_sampler(config=config,
-                                         sampler_name=config.val.sampler,
-                                         dataset=datasets['val'],
-                                         split='val')
+    if config.val.every > 0:
+        samplers['val'] = initialize_sampler(config=config,
+                                             sampler_name=config.val.sampler,
+                                             dataset=datasets['val'],
+                                             split='val')
 
     dataloaders = dict()
     dataloaders['train'] = torch.utils.data.DataLoader(datasets['train'], batch_sampler=samplers['train'])
-    dataloaders['val'] = torch.utils.data.DataLoader(datasets['val'], batch_sampler=samplers['val'])
+    if config.val.every > 0:
+        dataloaders['val'] = torch.utils.data.DataLoader(datasets['val'], batch_sampler=samplers['val'])
 
     #################### LOSSES + METRICS ######################
     # Setup losses
@@ -112,10 +115,11 @@ def train():
                                       loss_name=config.train.loss,
                                       split='train',
                                       n_classes=datasets['train'].n_categories)
-    losses['val'] = initialize_loss(config=config,
-                                    loss_name=config.val.loss,
-                                    split='val',
-                                    n_classes=datasets['val'].n_categories)
+    if config.val.every > 0:
+        losses['val'] = initialize_loss(config=config,
+                                        loss_name=config.val.loss,
+                                        split='val',
+                                        n_classes=datasets['val'].n_categories)
 
     # Setup Optimizer
     optimizer = torch.optim.Adam(params=(list(filter(lambda p: p.requires_grad, model.parameters())) + list(losses['train'].parameters())),
@@ -170,6 +174,8 @@ def fit(config,
 
     train_loss = []
     train_acc = []
+    val_loss = []
+    val_acc = []
 
     best_state = copy.deepcopy(model.state_dict())
     best_state = model.state_dict()
@@ -329,6 +335,17 @@ def fit(config,
         callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                  data={},
                  stats={})
+
+    # If no validation we save the last model as best
+    if config.val.every < 1:
+        best_acc = avg_acc
+        # best_state = copy.deepcopy(model.state_dict())
+        best_state = model.state_dict()
+        if hasattr(losses['train'], 'reps'):
+            reps = losses['train'].get_reps()
+        else:
+            reps = None
+        save_checkpoint(config, epoch, model, optimizer, best_acc, reps=reps, is_best=True)
 
     return model, best_state, best_acc, train_loss, train_acc, val_loss, val_acc
 
