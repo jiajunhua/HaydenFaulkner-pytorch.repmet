@@ -35,32 +35,42 @@ def initialize_model(config, model_name, model_id):
         """ Alexnet
         """
         model = models.alexnet(pretrained=config.model.use_pretrained)
-        freeze_params(model)
+        if model_id == '01':
+            freeze_params(model)
+        elif model_id == '02':
+            pass  # don't freeze
         output_size = model.classifier[6].in_features
         
         # model.classifier[6] = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)  # nn.Linear(output_size, num_classes)
-        model.classifier = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)
+        model.classifier = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=config.model.emb_size)
         input_size = 224
 
     elif model_name == "vgg":
         """ VGG11_bn
         """
         model = models.vgg11_bn(pretrained=config.model.use_pretrained)
+        if model_id == '01':
+            freeze_params(model)
+        elif model_id == '02':
+            pass  # don't freeze
         output_size = model.classifier[6].in_features
         
         # model.classifier[6] = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)  # nn.Linear(output_size, num_classes)
-        model.classifier = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)
+        model.classifier = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=config.model.emb_size)
         input_size = 224
 
     elif model_name == "squeezenet":
         """ Squeezenet
         """
         model = models.squeezenet1_0(pretrained=config.model.use_pretrained)
-        freeze_params(model)
+        if model_id == '01':
+            freeze_params(model)
+        elif model_id == '02':
+            pass  # don't freeze
         output_size = 512
         
         # model.classifier[1] = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=1024)  # nn.Conv2d(512, num_classes, kernel_size=(1,1), stride=(1,1))
-        model.classifier = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)
+        model.classifier = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=config.model.emb_size)
         model.num_classes = 1024 # num_classes
         input_size = 224
 
@@ -68,10 +78,13 @@ def initialize_model(config, model_name, model_id):
         """ Densenet
         """
         model = models.densenet121(pretrained=config.model.use_pretrained)
-        freeze_params(model)
+        if model_id == '01':
+            freeze_params(model)
+        elif model_id == '02':
+            pass  # don't freeze
         output_size = model.classifier.in_features
         
-        model.classifier = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)  # nn.Linear(output_size, num_classes)
+        model.classifier = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=config.model.emb_size)  # nn.Linear(output_size, num_classes)
         input_size = 224
 
     elif model_name == "inception":
@@ -79,13 +92,16 @@ def initialize_model(config, model_name, model_id):
         Be careful, expects (299,299) sized images and has auxiliary output
         """
         model = models.inception_v3(pretrained=config.model.use_pretrained)
-        freeze_params(model)
+        if model_id == '01':
+            freeze_params(model)
+        elif model_id == '02':
+            pass  # don't freeze
         # Handle the auxilary net
         output_size = model.AuxLogits.fc.in_features
-        model.AuxLogits.fc = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)  # nn.Linear(output_size, num_classes)
+        model.AuxLogits.fc = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=config.model.emb_size)  # nn.Linear(output_size, num_classes)
         # Handle the primary net
         output_size = model.fc.in_features
-        model.fc = Encoder(input_size=output_size, hidden_sizes=[256], output_size=config.model.emb_size)  # nn.Linear(output_size, num_classes)
+        model.fc = Encoder(input_size=output_size, hidden_sizes=[2048], output_size=config.model.emb_size)  # nn.Linear(output_size, num_classes)
         input_size = 299
 
     elif model_name == "protonet":
