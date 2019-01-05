@@ -43,19 +43,8 @@ def parse_args():
 
     return args
 
-args = parse_args()
 
 def train():
-          # set_name,
-          # model_name,
-          # loss_type,
-          # m, d, k, alpha,
-          # n_iterations=1000,
-          # net_learning_rate=0.0001,
-          # cluster_learning_rate=0.001,
-          # chunk_size=32,
-          # refresh_clusters=50,
-          # norm_clusters=False,
 
     # setup seeds
     np.random.seed(config.seed)
@@ -94,11 +83,13 @@ def train():
     datasets['train'] = initialize_dataset(config=config,
                                            dataset_name=config.dataset.name,
                                            dataset_id=config.dataset.id,
-                                           split='train')
+                                           split='train',
+                                           input_size=input_size)
     datasets['val'] = initialize_dataset(config=config,
                                          dataset_name=config.dataset.name,
                                          dataset_id=config.dataset.id,
-                                         split='val')
+                                         split='val',
+                                         input_size=input_size)
 
     samplers = dict()
     samplers['train'] = initialize_sampler(config=config,
@@ -146,14 +137,12 @@ def train():
                                      dataloaders=dataloaders,
                                      losses=losses,
                                      optimizer=optimizer)
-    #
-    # if config.TRAIN.kmeans != 0:
-    #     callbacks[0] = [callback.RepsKMeans(data=train_data_classwise, k=config.TRAIN.k, n_classes=config.dataset.NUM_CLASSES,
-    #                                                 emb_size=config.EMBEDDING_SIZE, max_per_class=5,
-    #                                                 frequent=config.TRAIN.kmeans, model_background=config.MODEL_BACKGROUND)]
-    #
-    # callbacks[1] = [callback.module_checkpoint(mod, prefix, period=1, save_optimizer_states=True)]
 
+    # pre fit() flag
+    if config.model.type == 'inception':
+        is_inception = True
+    else:
+        is_inception = False
 
     fit(config=config,
         logger=logger,
@@ -163,391 +152,7 @@ def train():
         optimizer=optimizer,
         callbacks=callbacks,
         lr_scheduler=lr_scheduler,
-        is_inception=False)
-#
-#     # make list of cluster refresh if given an interval int
-#     if isinstance(refresh_clusters, int):
-#         refresh_clusters = list(range(0, n_iterations, refresh_clusters))
-#
-#     # Get initial embedding using all samples in training set
-#     initial_reps = compute_all_reps(net, train_dataset, chunk_size)
-#
-#     # Create loss object (this stores the cluster centroids)
-#     if loss_type == "magnet":
-#         the_loss = MagnetLoss(train_y, k, m, d, alpha=alpha)
-#
-#         # Initialise the embeddings/representations/clusters
-#         print("Initialising the clusters")
-#         the_loss.update_clusters(initial_reps)
-#
-#         # Setup the optimizer
-#         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=net_learning_rate)
-#         optimizerb = None
-#     elif loss_type == "repmet" or loss_type == "repmet2" or loss_type == "repmet3" or loss_type == "myloss1":
-#         if loss_type == "repmet":
-#             the_loss = RepMetLoss(train_y, k, m, d, alpha=alpha)
-#         elif loss_type == "repmet2":
-#             the_loss = RepMetLoss2(train_y, k, m, d, alpha=alpha)
-#         elif loss_type == "repmet3":
-#             the_loss = RepMetLoss3(train_y, k, m, d, alpha=alpha)
-#         elif loss_type == "myloss1":
-#             the_loss = MyLoss1(train_y, k, m, d, alpha=alpha)
-#
-#         # Initialise the embeddings/representations/clusters
-#         print("Initialising the clusters")
-#         the_loss.update_clusters(initial_reps)
-#
-#         # Setup the optimizer
-#         if cluster_learning_rate < 0:
-#             optimizer = torch.optim.Adam(list(filter(lambda p: p.requires_grad, net.parameters())) + [the_loss.centroids], lr=net_learning_rate)
-#             optimizerb = None
-#         else:
-#             optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=net_learning_rate)
-#             optimizerb = torch.optim.Adam([the_loss.centroids], lr=cluster_learning_rate)
-#
-#     l = os.listdir(save_path)
-#     if load_latest and len(l) > 1:
-#         l.sort(reverse=True)
-#         state = torch.load("%s/%s" % (save_path, l[1])) # ignore log.txt
-#
-#         print("Loading model: %s/%s" % (save_path, l[1]))
-#
-#         net.load_state_dict(state['state_dict'])
-#         optimizer.load_state_dict(state['optimizer'])
-#         if optimizerb:
-#             optimizerb.load_state_dict(state['optimizerb'])
-#
-#         start_iteration = state['iteration']+1
-#         best_acc = state['best_acc']
-#         the_loss = state['the_loss'] # overwrite the loss
-#         plot_sample_indexs = state['plot_sample_indexs']
-#         plot_classes = state['plot_classes']
-#         plot_test_sample_indexs = state['plot_test_sample_indexs']
-#         plot_test_classes = state['plot_test_classes']
-#         batch_losses = state['batch_losses']
-#         train_accs = state['train_accs']
-#         test_accs = state['test_accs']
-#
-#         test_acc = test_accs[0][-1]
-#         train_acc = train_accs[0][-1]
-#         test_acc_b = test_accs[1][-1]
-#         train_acc_b = train_accs[1][-1]
-#         test_acc_c = test_accs[2][-1]
-#         train_acc_c = train_accs[2][-1]
-#         test_acc_d = test_accs[3][-1]
-#         train_acc_d = train_accs[3][-1]
-#     else:
-#
-#         # Randomly sample the classes then the samples from each class to plot
-#         plot_sample_indexs, plot_classes = get_indexs(train_y, n_plot_classes, n_plot_samples)
-#         plot_test_sample_indexs, plot_test_classes = get_indexs(test_y, n_plot_classes, n_plot_samples, class_ids=plot_classes)
-#
-#         batch_losses = []
-#         train_accs = [[], [], [], []]
-#         test_accs = [[], [], [], []]
-#         start_iteration = 0
-#         best_acc = 0
-#         test_acc = 0
-#         train_acc = 0
-#         test_acc_b = 0
-#         train_acc_b = 0
-#         test_acc_c = 0
-#         train_acc_c = 0
-#         test_acc_d = 0
-#         train_acc_d = 0
-#
-#     # lets plot the initial embeddings
-#     cluster_classes = the_loss.cluster_classes
-#
-#     # use this to get indexs (indx to match cluster classes) for class ids (plot_classes) that we are plotting
-#     for i in range(len(cluster_classes)):
-#         cluster_classes[i] = the_loss.unique_y[cluster_classes[i]]
-#
-#     cluster_indexs = []
-#     for ci in range(len(the_loss.cluster_classes)):
-#         if the_loss.cluster_classes[ci] in plot_classes:
-#             cluster_indexs.append(ci)
-#
-#     if not load_latest or len(l) < 2:
-#         # plot it
-#         graph(initial_reps[plot_sample_indexs], train_y[plot_sample_indexs],
-#               cluster_centers=ensure_numpy(the_loss.centroids)[cluster_indexs],
-#               cluster_classes=the_loss.cluster_classes[cluster_indexs],
-#               savepath="%s/emb-initial%s" % (plots_path, plots_ext))
-#
-#     # Get some sample indxs to do acc test on... compare these to the acc coming out of the batch calc
-#     test_train_inds,_ = get_indexs(train_y, len(set(train_y)), 10)
-#
-#     # Lets setup the training loop
-#     iteration = None
-#     for iteration in range(start_iteration, n_iterations):
-#         # Sample batch and do forward-backward
-#         batch_example_inds, batch_class_inds = the_loss.gen_batch()
-#
-#         # Get inputs and and labels from the dataset
-#         batch_x = get_inputs(train_dataset, batch_example_inds).cuda()
-#         batch_y = torch.from_numpy(batch_class_inds).cuda()
-#
-#         # Calc the outputs (embs) and then the loss + accs
-#         outputs = net(batch_x)
-#         batch_loss, batch_example_losses, batch_acc = the_loss.loss(outputs, batch_y)
-#
-#         # Pass the gradient and update
-#         optimizer.zero_grad()
-#         if optimizerb:
-#             optimizerb.zero_grad()
-#         batch_loss.backward()
-#         optimizer.step()
-#         if optimizerb:
-#             optimizerb.step()
-#
-#             if norm_clusters:
-#                 # Let's also normalise those centroids [because repmet pushes them away from unit sphere] to:
-#                 # Option 1: sit on the hypersphere (use norm)
-#                 # g = the_loss.centroids.norm(p=2,dim=0,keepdim=True)
-#                 import torch.nn.functional as F
-#                 the_loss.centroids.data = F.normalize(the_loss.centroids)
-#
-#                 # Option 2: sit on OR within the hypersphere (divide by max [scales all evenly]))
-#                 # mx, _ = the_loss.centroids.max(0)
-#                 # mx, _ = mx.max(0)
-#                 # the_loss.centroids.data_loading = the_loss.centroids/mx
-#                 # What you wrote here doesn't work as scales axes independently...
-#
-#         # Just changing some types
-#         batch_loss = float(ensure_numpy(batch_loss))
-#         batch_example_losses = ensure_numpy(batch_example_losses)
-#
-#         # Update loss index
-#         the_loss.update_losses(batch_example_inds, batch_example_losses)
-#
-#         if iteration > 0 and not iteration % calc_acc_every:
-#             # calc all the accs
-#             train_reps = compute_reps(net, train_dataset, test_train_inds, chunk_size)
-#             test_test_inds, _ = get_indexs(test_y, len(set(test_y)), 10)
-#             test_reps = compute_reps(net, test_dataset, test_test_inds, chunk_size)
-#
-#             test_acc = the_loss.calc_accuracy(test_reps, test_y[test_test_inds], method='simple')
-#             train_acc = the_loss.calc_accuracy(train_reps, train_y[test_train_inds], method='simple')
-#
-#             test_acc_b = the_loss.calc_accuracy(test_reps, test_y[test_test_inds], method='magnet')
-#             train_acc_b = the_loss.calc_accuracy(train_reps, train_y[test_train_inds], method='magnet')
-#
-#             test_acc_c = the_loss.calc_accuracy(test_reps, test_y[test_test_inds], method='repmet')
-#             train_acc_c = the_loss.calc_accuracy(train_reps, train_y[test_train_inds], method='repmet')
-#
-#             # removed because of failed runs with out of mem errors
-#             # test_acc_d = the_loss.calc_accuracy(test_reps, test_y[test_test_inds], method='unsupervised')
-#             # train_acc_d = the_loss.calc_accuracy(train_reps, train_y[test_train_inds], method='unsupervised')
-#
-#             test_acc_d = test_acc_c
-#             train_acc_d = train_acc_c
-#
-#             with open(save_path+'/log.txt', 'a') as f:
-#                 f.write("Iteration %06d/%06d: Tr. L: %0.3f :: Batch. A: %0.3f :::: Tr. A - simple: %0.3f -- magnet: %0.3f -- repmet: %0.3f -- unsupervised: %0.3f :::: Te. A - simple: %0.3f -- magnet: %0.3f -- repmet: %0.3f -- unsupervised: %0.3f\n" % (iteration, n_iterations, batch_loss, batch_acc, train_acc, train_acc_b, train_acc_c, train_acc_d, test_acc, test_acc_b, test_acc_c, test_acc_d))
-#             print("Iteration %06d/%06d: Tr. L: %0.3f :: Batch. A: %0.3f :::: Tr. A - simple: %0.3f -- magnet: %0.3f -- repmet: %0.3f -- unsupervised: %0.3f :::: Te. A - simple: %0.3f -- magnet: %0.3f -- repmet: %0.3f -- unsupervised: %0.3f" % (iteration, n_iterations, batch_loss, batch_acc, train_acc, train_acc_b, train_acc_c, train_acc_d, test_acc, test_acc_b, test_acc_c, test_acc_d))
-#
-#             batch_ass_ids = np.unique(the_loss.assignments[batch_example_inds])
-#
-#             os.makedirs("%s/batch-emb/" % plots_path, exist_ok=True)
-#             os.makedirs("%s/batch-emb-all/" % plots_path, exist_ok=True)
-#             os.makedirs("%s/batch-clusters/" % plots_path, exist_ok=True)
-#
-#             graph(ensure_numpy(outputs),
-#                   train_y[batch_example_inds],
-#                   cluster_centers=ensure_numpy(the_loss.centroids)[batch_ass_ids],
-#                   cluster_classes=the_loss.cluster_classes[batch_ass_ids],
-#                   savepath="%s/batch-emb/i%06d%s" % (plots_path, iteration, plots_ext))
-#
-#             graph(ensure_numpy(outputs),
-#                   train_y[batch_example_inds],
-#                   cluster_centers=ensure_numpy(the_loss.centroids),
-#                   cluster_classes=the_loss.cluster_classes,
-#                   savepath="%s/batch-emb-all/i%06d%s" % (plots_path, iteration, plots_ext))
-#
-#             graph(np.zeros_like(ensure_numpy(outputs)),
-#                   np.zeros_like(train_y[batch_example_inds]),
-#                   cluster_centers=ensure_numpy(the_loss.centroids),
-#                   cluster_classes=the_loss.cluster_classes,
-#                   savepath="%s/batch-clusters/i%06d%s" % (plots_path, iteration, plots_ext))
-#
-#         train_reps_this_iter = False
-#         if iteration in refresh_clusters:
-#             with open(save_path+'/log.txt', 'a') as f:
-#                 f.write('Refreshing clusters')
-#             print('Refreshing clusters')
-#             train_reps = compute_all_reps(net, train_dataset, chunk_size=chunk_size)
-#             the_loss.update_clusters(train_reps)
-#
-#             cluster_classes = the_loss.cluster_classes
-#             train_reps_this_iter = True
-#
-#         # store the stats to graph at end
-#         batch_losses.append(batch_loss)
-#         # batch_accs.append(batch_acc)
-#         train_accs[0].append(train_acc)
-#         test_accs[0].append(test_acc)
-#         train_accs[1].append(train_acc_b)
-#         test_accs[1].append(test_acc_b)
-#         train_accs[2].append(train_acc_c)
-#         test_accs[2].append(test_acc_c)
-#         train_accs[3].append(train_acc_d)
-#         test_accs[3].append(test_acc_d)
-#
-#         if iteration > 0 and not iteration % plot_every:
-#             #use this to get indexs (indx to match cluster classes) for class ids (plot_classes) that we are plotting
-#             for i in range(len(cluster_classes)):
-#                 cluster_classes[i] = the_loss.unique_y[cluster_classes[i]]
-#
-#             # so 1. we don't have to recalc, 2. the kmeans update occured on these reps, better graphing ...
-#             # if we were to re-get with compute_reps(), batch norm and transforms could give different embeddings
-#             if train_reps_this_iter:
-#                 plot_train_emb = train_reps[test_train_inds]
-#             else:
-#                 plot_train_emb = compute_reps(net, train_dataset, test_train_inds, chunk_size=chunk_size)
-#
-#             plot_test_emb = compute_reps(net, test_dataset, plot_test_sample_indexs, chunk_size=chunk_size)
-#
-#             os.makedirs("%s/train-emb/" % plots_path, exist_ok=True)
-#             os.makedirs("%s/test-emb/" % plots_path, exist_ok=True)
-#             os.makedirs("%s/train-emb-all/" % plots_path, exist_ok=True)
-#             os.makedirs("%s/test-emb-all/" % plots_path, exist_ok=True)
-#             os.makedirs("%s/cluster-losses/" % plots_path, exist_ok=True)
-#             os.makedirs("%s/cluster-counts/" % plots_path, exist_ok=True)
-#
-#             graph(plot_train_emb,
-#                   train_y[plot_sample_indexs],
-#                   cluster_centers=ensure_numpy(the_loss.centroids)[cluster_indexs],
-#                   cluster_classes=the_loss.cluster_classes[cluster_indexs],
-#                   savepath="%s/train-emb/i%06d%s" % (plots_path, iteration, plots_ext))
-#
-#             graph(plot_test_emb,
-#                   test_y[plot_test_sample_indexs],
-#                   cluster_centers=ensure_numpy(the_loss.centroids)[cluster_indexs],
-#                   cluster_classes=the_loss.cluster_classes[cluster_indexs],
-#                   savepath="%s/test-emb/i%06d%s" % (plots_path, iteration, plots_ext))
-#
-#             graph(plot_train_emb,
-#                   # train_y[plot_sample_indexs],
-#                   train_y[test_train_inds],
-#                   cluster_centers=ensure_numpy(the_loss.centroids),
-#                   cluster_classes=the_loss.cluster_classes,
-#                   savepath="%s/train-emb-all/i%06d%s" % (plots_path, iteration, plots_ext))
-#
-#             graph(plot_test_emb,
-#                   test_y[plot_test_sample_indexs],
-#                   cluster_centers=ensure_numpy(the_loss.centroids),
-#                   cluster_classes=the_loss.cluster_classes,
-#                   savepath="%s/test-emb-all/i%06d%s" % (plots_path, iteration, plots_ext))
-#
-#             plot_smooth({'loss': batch_losses,
-#                          'train acc': train_accs[0],
-#                          'test acc': test_accs[0]},
-#                         savepath="%s/loss_simple%s" % (plots_path, plots_ext))
-#             plot_smooth({'loss': batch_losses,
-#                          'train acc': train_accs[1],
-#                          'test acc': test_accs[1]},
-#                         savepath="%s/loss_magnet%s" % (plots_path, plots_ext))
-#             plot_smooth({'loss': batch_losses,
-#                          'train acc': train_accs[2],
-#                          'test acc': test_accs[2]},
-#                         savepath="%s/loss_repmet%s" % (plots_path, plots_ext))
-#             # plot_smooth({'loss': batch_losses,
-#             #              'train acc': train_accs[3],
-#             #              'test acc': test_accs[3]},
-#             #             savepath="%s/loss_unsupervised%s" % (plots_path, plots_ext))
-#
-#             plot_cluster_data(the_loss.cluster_losses,
-#                               the_loss.cluster_classes,
-#                               title="cluster losses",
-#                               savepath="%s/cluster-losses/i%06d%s" % (plots_path, iteration, plots_ext))
-#
-#             cluster_counts = []
-#             for c in range(len(the_loss.cluster_assignments)):
-#                 cluster_counts.append(len(the_loss.cluster_assignments[c]))
-#
-#             plot_cluster_data(cluster_counts,
-#                               the_loss.cluster_classes,
-#                               title="cluster counts",
-#                               savepath="%s/cluster-counts/i%06d%s" % (plots_path, iteration, plots_ext))
-#
-#         if iteration > 0 and not iteration % save_every:
-#             if save_path:
-#                 if test_acc_d > best_acc:
-#                     print("Saving model (is best): %s/i%06d%s" % (save_path, iteration, '.pth'))
-#                     best_acc = test_acc_d
-#                 else:
-#                     print("Saving model: %s/i%06d%s" % (save_path, iteration, '.pth'))
-#
-#                 state = {
-#                     'iteration': iteration,
-#                     'state_dict': net.state_dict(),
-#                     'optimizer': optimizer.state_dict(),
-#                     'acc': test_acc_d,
-#                     'best_acc': best_acc,
-#                     'the_loss': the_loss,
-#                     'plot_sample_indexs': plot_sample_indexs,
-#                     'plot_classes': plot_classes,
-#                     'plot_test_sample_indexs': plot_test_sample_indexs,
-#                     'plot_test_classes': plot_test_classes,
-#                     'batch_losses': batch_losses,
-#                     'train_accs': train_accs,
-#                     'test_accs': test_accs,
-#                 }
-#                 if optimizerb:
-#                     state['optimizerb'] = optimizerb.state_dict()
-#                 torch.save(state, "%s/i%06d%s" % (save_path, iteration, '.pth'))
-#
-#     # END TRAINING LOOP
-#
-#     # Plot curves and graphs
-#     plot_smooth({'loss': batch_losses,
-#                  'train acc': train_accs[0],
-#                  'test acc': test_accs[0]},
-#                 savepath="%s/loss_simple%s" % (plots_path, plots_ext))
-#     plot_smooth({'loss': batch_losses,
-#                  'train acc': train_accs[1],
-#                  'test acc': test_accs[1]},
-#                 savepath="%s/loss_magnet%s" % (plots_path, plots_ext))
-#     plot_smooth({'loss': batch_losses,
-#                  'train acc': train_accs[2],
-#                  'test acc': test_accs[2]},
-#                 savepath="%s/loss_repmet%s" % (plots_path, plots_ext))
-#     plot_smooth({'loss': batch_losses,
-#                  'train acc': train_accs[3],
-#                  'test acc': test_accs[3]},
-#                 savepath="%s/loss_unsupervised%s" % (plots_path, plots_ext))
-#
-#     # Calculate and graph the final
-#     final_reps = compute_reps(net, train_dataset, plot_sample_indexs, chunk_size=chunk_size)
-#     graph(final_reps, train_y[plot_sample_indexs], savepath="%s/emb-final%s" % (plots_path, plots_ext))
-#
-#     if save_path and iteration:
-#         if test_acc_d > best_acc:
-#             print("Saving model (is best): %s/i%06d%s" % (save_path, iteration+1, '.pth'))
-#             best_acc = test_acc_d
-#         else:
-#             print("Saving model: %s/i%06d%s" % (save_path, iteration+1, '.pth'))
-#
-#         state = {
-#             'iteration': iteration,
-#             'state_dict': net.state_dict(),
-#             'optimizer': optimizer.state_dict(),
-#             'acc': test_acc_d,
-#             'best_acc': best_acc,
-#             'the_loss': the_loss,
-#             'plot_sample_indexs': plot_sample_indexs,
-#             'plot_classes': plot_classes,
-#             'plot_test_sample_indexs': plot_test_sample_indexs,
-#             'plot_test_classes': plot_test_classes,
-#             'batch_losses': batch_losses,
-#             'train_accs': train_accs,
-#             'test_accs': test_accs,
-#         }
-#         if optimizerb:
-#             state['optimizerb'] = optimizerb.state_dict()
-#         torch.save(state, "%s/i%06d%s" % (save_path, iteration+1, '.pth'))
-#
+        is_inception=is_inception)
 
 
 def fit(config,
@@ -607,19 +212,18 @@ def fit(config,
 
             # forward
             # Get model outputs and calculate loss
-            # backward + optimize
-            # if is_inception:
-            #     # From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
-            #     outputs, aux_outputs = model(inputs)
-            #     loss1 = losses(outputs, labels)
-            #     loss2 = losses(aux_outputs, labels)
-            #     loss = loss1 + 0.4 * loss2
-            # else:
-            #     outputs = model(inputs)
-            #     loss = losses(input=outputs, target=labels)
-            outputs = model(inputs)
-            loss, sample_losses, pred, acc = losses['train'](input=outputs, target=labels)
+            if is_inception:
+                # From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
+                outputs, aux_outputs = model(inputs)
+                loss_main, sample_losses_main, pred_main, acc_main = losses['train'](input=outputs, target=labels)
+                loss_aux, sample_losses_aux, pred_aux, acc_aux = losses['train'](input=aux_outputs, target=labels)
+                loss = loss_main + 0.4 * loss_aux
+                sample_losses = sample_losses_main + 0.4 * sample_losses_aux
+            else:
+                outputs = model(inputs)
+                loss, sample_losses, pred, acc = losses['train'](input=outputs, target=labels)
 
+            # backward + optimize
             loss.backward()
             optimizer.step()
 
@@ -733,6 +337,8 @@ def main():
     from utils.debug import set_working_dir
     # set the working directory as appropriate
     set_working_dir()
+
+    args = parse_args()
 
     print('Called with argument:', args)
     # update config
