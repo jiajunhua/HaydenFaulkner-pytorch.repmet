@@ -84,7 +84,8 @@ def evaluate():
     datasets['test'] = initialize_dataset(config=config,
                                           dataset_name=config.dataset.name,
                                           dataset_id=config.dataset.id,
-                                          split='test')
+                                          split='test',
+                                          input_size=input_size)
 
     samplers = dict()
     samplers['test'] = initialize_sampler(config=config,
