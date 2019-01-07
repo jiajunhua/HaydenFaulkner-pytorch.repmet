@@ -15,7 +15,8 @@ def initialize_dataset(config, dataset_name, dataset_id, split, input_size):
     elif dataset_name == 'flowers':
         if dataset_id == '00':  # default
             # Setup Transforms instead of doing in the specific dataset class
-            transforms = trns.Compose([trns.Resize((input_size, input_size)), #  imgnet size....trns.Resize((32, 32)),  # GoogLeNet size
+            transforms = trns.Compose([trns.Resize((input_size, input_size)),
+                                       trns.RandomHorizontalFlip(),
                                        trns.ToTensor(),
                                        trns.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # normalise with model zoo
                                        ])
@@ -27,7 +28,8 @@ def initialize_dataset(config, dataset_name, dataset_id, split, input_size):
     elif dataset_name == 'pets':
         if dataset_id == '00':  # default
             # Setup Transforms instead of doing in the specific dataset class
-            transforms = trns.Compose([trns.Resize((input_size, input_size)), #  imgnet size....trns.Resize((32, 32)),  # GoogLeNet size
+            transforms = trns.Compose([trns.Resize((input_size, input_size)),
+                                       trns.RandomHorizontalFlip(),
                                        trns.ToTensor(),
                                        trns.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # normalise with model zoo
                                        ])
@@ -40,7 +42,7 @@ def initialize_dataset(config, dataset_name, dataset_id, split, input_size):
     elif dataset_name == 'dogs':
         if dataset_id == '00':  # default
             # Setup Transforms instead of doing in the specific dataset class
-            transforms = trns.Compose([trns.Resize((input_size, input_size)), #  imgnet size....trns.Resize((32, 32)),  # GoogLeNet size
+            transforms = trns.Compose([trns.Resize((input_size, input_size)),
                                        trns.ToTensor(),
                                        trns.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # normalise with model zoo
                                        ])
