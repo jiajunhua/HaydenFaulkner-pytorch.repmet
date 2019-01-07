@@ -221,7 +221,7 @@ def fit(config,
             if is_inception:
                 # From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
                 outputs, aux_outputs = model(inputs)
-                loss_main, sample_losses_main, pred_main, acc_main = losses['train'](input=outputs, target=labels)
+                loss_main, sample_losses_main, pred, acc = losses['train'](input=outputs, target=labels)
                 loss_aux, sample_losses_aux, pred_aux, acc_aux = losses['train'](input=aux_outputs, target=labels)
                 loss = loss_main + 0.4 * loss_aux
                 sample_losses = sample_losses_main + 0.4 * sample_losses_aux
