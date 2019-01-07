@@ -45,6 +45,8 @@ config.train.loss = None
 
 config.train.checkpoint_every = 0  # 0 is never
 
+config.train.for_bs = 64  # the batch size for forward pass for building clusters (magnet) or reps (repmet), lower if running out of mem
+
 config.train.epochs = None
 config.train.learning_rate = None
 config.train.lr_scheduler_gamma = ''

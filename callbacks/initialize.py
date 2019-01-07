@@ -38,18 +38,18 @@ def initialize_callbacks(config, model, datasets, samplers, dataloaders, losses,
 
     elif config.run_type == 'magnetloss':
 
-        callbacks['epoch_start'] = [UpdateClusters(every=1, dataloader=dataloaders['train'], dataset=datasets['train'])]
+        callbacks['epoch_start'] = [UpdateClusters(every=1, dataloader=dataloaders['train'], dataset=datasets['train'], batch_size=config.train.for_bs)]
 
         callbacks['batch_end'] = [TensorBoard(every=config.vis.every, config=config, tb_sw=tb_sw),
                                   EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='train', label_image=True),
                                   UpdateLosses(every=1, dataloader=dataloaders['train']),
-                                  UpdateClusters(every=10, dataloader=dataloaders['train'], dataset=datasets['train'])]
+                                  UpdateClusters(every=10, dataloader=dataloaders['train'], dataset=datasets['train'], batch_size=config.train.for_bs)]
 
         callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, config=config, tb_sw=tb_sw)]
 
         # Update the validation clusters with training data and set them in the val loss with the variance from training
         # so we can perform the evaluation
-        callbacks['validation_start'] = [UpdateClusters(every=1, dataloader=dataloaders['train'], dataset=datasets['train']),
+        callbacks['validation_start'] = [UpdateClusters(every=1, dataloader=dataloaders['train'], dataset=datasets['train'], batch_size=config.train.for_bs),
                                          SetClusterMeans(every=1, eval_loss=losses['val'], dataloader=dataloaders['train']),
                                          SetEvalVariance(every=1, eval_loss=losses['val'], training_loss=losses['train'])]
 
@@ -57,7 +57,7 @@ def initialize_callbacks(config, model, datasets, samplers, dataloaders, losses,
                                        EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='val', label_image=True)]
 
     elif config.run_type == 'repmet':
-        callbacks['training_start'] = [UpdateReps(every=1, dataset=datasets['train'])]
+        callbacks['training_start'] = [UpdateReps(every=1, dataset=datasets['train'], batch_size=config.train.for_bs)]
 
         callbacks['batch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw),
                                   EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='train', label_image=True)]

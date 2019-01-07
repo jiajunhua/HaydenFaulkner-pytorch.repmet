@@ -3,16 +3,17 @@ from sklearn.cluster import KMeans
 
 
 class UpdateReps(object):
-    def __init__(self, every, dataset):
+    def __init__(self, every, dataset, batch_size=64):
         self.every = every
         self.dataset = dataset
+        self.batch_size = batch_size
 
     def __call__(self, epoch, batch, step, model, dataloaders, losses, optimizer, data, stats):
         if step % self.every == 0:
             print('Updating Reps')
             outputs, labels = forward(model=model,
                                       dataset=self.dataset,
-                                      batch_size=400)
+                                      batch_size=self.batch_size)
 
             N = losses['train'].N  # todo might be a nicer way to get these
             k = losses['train'].k

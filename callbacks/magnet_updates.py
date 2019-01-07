@@ -5,17 +5,18 @@ from utils.model_forward import forward
 
 
 class UpdateClusters(object):
-    def __init__(self, every, dataloader, dataset):
+    def __init__(self, every, dataloader, dataset, batch_size=64):
         self.every = every
         self.dataloader = dataloader
         self.dataset = dataset
+        self.batch_size = batch_size
 
     def __call__(self, epoch, batch, step, model, dataloaders, losses, optimizer, data, stats):
         if step % self.every == 0:
             print('Updating Clusters')
             outputs, labels = forward(model=model,
                                       dataset=self.dataset,
-                                      batch_size=400)
+                                      batch_size=self.batch_size)
 
             # todo check these labels match those in the batch sampler
 
