@@ -1,5 +1,5 @@
 run_type: 'magnetloss'
-run_id: 'magnet_flowers_1_12_4_frozen'
+run_id: 'magnet_flowers_r18F_1_12_4'
 seed: 7
 
 model:
@@ -7,7 +7,7 @@ model:
   id: '01'
   use_pretrained: True
 
-  emb_size: 64
+  emb_size: 1024
 
 
 dataset:
