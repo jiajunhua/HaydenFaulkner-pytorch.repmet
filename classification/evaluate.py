@@ -67,9 +67,9 @@ def evaluate():
 
     #################### MODEL ########################
     # Load the model definition
-    model, input_size, output_size = initialize_model(config=config,
-                                                      model_name=config.model.type,
-                                                      model_id=config.model.id)
+    model, input_size, output_size, mean, std = initialize_model(config=config,
+                                                                 model_name=config.model.type,
+                                                                 model_id=config.model.id)
     model = model.to(device)
 
     # Use the GPU and Parallel it
@@ -85,7 +85,9 @@ def evaluate():
                                           dataset_name=config.dataset.name,
                                           dataset_id=config.dataset.id,
                                           split='test',
-                                          input_size=input_size)
+                                          input_size=input_size,
+                                          mean=mean,
+                                          std=std)
 
     samplers = dict()
     samplers['test'] = initialize_sampler(config=config,
