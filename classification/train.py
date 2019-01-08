@@ -64,9 +64,9 @@ def train():
 
     #################### MODEL ########################
     # Load the model definition
-    model, input_size, output_size = initialize_model(config=config,
-                                                      model_name=config.model.type,
-                                                      model_id=config.model.id)
+    model, input_size, output_size, mean, std = initialize_model(config=config,
+                                                                 model_name=config.model.type,
+                                                                 model_id=config.model.id)
     model = model.to(device)
 
     # Load model params
@@ -84,13 +84,17 @@ def train():
                                            dataset_name=config.dataset.name,
                                            dataset_id=config.dataset.id,
                                            split='train',
-                                           input_size=input_size)
+                                           input_size=input_size,
+                                           mean=mean,
+                                           std=std)
     if config.val.every > 0:
         datasets['val'] = initialize_dataset(config=config,
                                              dataset_name=config.dataset.name,
                                              dataset_id=config.dataset.id,
                                              split='val',
-                                             input_size=input_size)
+                                             input_size=input_size,
+                                             mean=mean,
+                                             std=std)
 
     samplers = dict()
     samplers['train'] = initialize_sampler(config=config,

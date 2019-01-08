@@ -5,7 +5,7 @@ from data_loading.samplers import EpisodeBatchSampler, MagnetBatchSampler
 from data_loading.sets import OmniglotDataset, OxfordFlowersDataset, OxfordPetsDataset, StanfordDogsDataset
 
 
-def initialize_dataset(config, dataset_name, dataset_id, split, input_size):
+def initialize_dataset(config, dataset_name, dataset_id, split, input_size, mean, std):
 
     if dataset_name == 'omniglot':
         if dataset_id == '00':  # default
