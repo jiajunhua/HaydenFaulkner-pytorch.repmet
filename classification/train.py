@@ -270,9 +270,9 @@ def fit(config,
                 v_inputs = v_inputs.to(device)
                 v_labels = v_labels.to(device)
 
-                # with torch.set_grad_enabled(False):  # todo do we need the set grad? or does the zero handle this before the next backward call?
+                with torch.set_grad_enabled(False):  # disables grad calculation as dont need it so can save mem
                 # Get model outputs and calculate loss
-                v_outputs = model(v_inputs)
+                    v_outputs = model(v_inputs)
                 loss, sample_losses, pred, acc = losses['val'](input=v_outputs, target=v_labels)
 
                 # statistics
