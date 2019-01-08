@@ -1,0 +1,67 @@
+run_type: 'repmet'
+run_id: 'repmet_flowers_inc3LU_1_12_4'
+seed: 7
+
+model:
+  type: 'inception'
+  id: '02'  # 01: frozen, 02: unfrozen
+  use_pretrained: False
+
+  emb_size: 1024
+  dist: 'euc'
+
+
+dataset:
+  name: 'flowers'
+  id: '00'
+
+
+train:
+  sampler: 'episodes_repmet'
+  loss: 'repmet_c'
+
+  checkpoint_every: 10  # this many epochs
+
+  epochs: 150
+  learning_rate: 0.001
+
+  episodes: 25  # per epoch
+  k: 1
+  m: 12
+  d: 4
+  alpha: 1.0
+  sigma: 0.5
+
+
+val:
+  every: 1 #0  # run validation every x epochs
+
+  sampler: 'episodes_repmet'
+  loss: 'repmet_c'
+
+  episodes: 25  # per validation run, performed every 'every' epoch
+  m: 12
+  d: 4
+  alpha: 1.0
+  sigma: 0.5
+
+
+test:  # will only do one epoch
+  split: 'test'
+
+  resume_from: 'B'
+
+  sampler: 'episodes_repmet'
+  loss: 'repmet_c'
+
+  episodes: 500
+  m: 12
+  d: 4
+  alpha: 1.0
+  sigma: 0.5
+
+
+vis:
+  every: 10  # update tensorboard every x steps (episodes)
+  plot_embed_every: 10  # update tensorboard projector every x steps (episodes) (Train and Val)
+  test_plot_embed_every: 10  # update tensorboard projector every x steps (episodes) (Test)
