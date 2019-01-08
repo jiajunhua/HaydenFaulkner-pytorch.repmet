@@ -134,7 +134,7 @@ Time format: HH:MM:SS
 
 GPU Used: GTX 980 Ti
 
-GPU Memory calculation is an upper bound.
+GPU Memory calculation is approximate.
 
 ### Prototypical Networks
 
@@ -162,7 +162,9 @@ Model checkpoints will be available soon
 | `repmet_flowers_1_12_4`        |     60 |  1500 |   00:32:17 |     1.1 GB |      |
 | `repmet_flowers_3_12_4`        |     60 |  1500 |   00:33:45 |     1.3 GB |      |
 | `repmet_flowers_3_12_4_r18l`   |    150 |  3750 |   01:28:26 |     3.5 GB |      |
-| `repmet_flowers_3_12_4_inc3l`  |        |       |            |            |      |
+| `repmet_flowers_inc3F_1_12_4`  |    150 |  3750 |   02:00:39 |     3.5 GB |      |
+| `repmet_flowers_inc3F_3_12_4`  |    150 |  3750 |   01:59:57 |     3.5 GB |      |
+| `repmet_flowers_inc3L_1_12_4`  |    150 |  3750 |   00:00:00 |     8.6 GB |      |
 
 **Pets (Training Set):**
 
@@ -203,6 +205,8 @@ Model checkpoints will be available soon
 | `repmet_flowers_1_12_4`        | Resnet18    | `true`  |  1  | 12  |  4  |     |                - |        75.35% |
 | `repmet_flowers_3_12_4`        | Resnet18    | `true`  |  3  | 12  |  4  |     |                - |        76.18% |
 | `repmet_flowers_3_12_4_r18l`** | Resnet18    | `false` |  3  | 12  |  4  |     |                - |        44.70% |
+| `repmet_flowers_inc3F_1_12_4`  | InceptionV3 | `true`  |  1  | 12  |  4  |     |                - |        72.93% |
+| `repmet_flowers_inc3F_3_12_4`  | InceptionV3 | `true`  |  3  | 12  |  4  |     |                - |        73.25% |
 | `repmet_flowers_3_12_4_inc3l`  | InceptionV3 | `false` |  3  | 12  |  4  |     |            89.0% |             % |
 
 *One test run of 500 episodes
