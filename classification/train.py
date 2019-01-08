@@ -218,7 +218,7 @@ def fit(config,
             labels = labels.to(device)
 
             # zero the parameter gradients
-            optimizer.zero_grad()
+            model.zero_grad()
 
             # forward
             # Get model outputs and calculate loss
@@ -234,6 +234,7 @@ def fit(config,
                 loss, sample_losses, pred, acc = losses['train'](input=outputs, target=labels)
 
             # backward + optimize
+            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
