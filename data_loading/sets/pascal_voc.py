@@ -93,10 +93,7 @@ class PascalVOCDataset(Dataset):
         sample_id = self.sample_ids[index]
 
         # load the image
-        if self.use_flipped and sample_id[-2:] == '_f':
-            x = self.load_img(self.get_img_path(sample_id), flip=True)
-        else:
-            x = self.load_img(self.get_img_path(sample_id), flip=False)
+        x = self.load_img(sample_id)
         y = self.data[sample_id]
 
         # perform the transforms
@@ -208,6 +205,8 @@ class PascalVOCDataset(Dataset):
         """
         Load image and bounding boxes info from XML file in the PASCAL VOC format.
         """
+        width, height = self.load_img(sample_id).size
+
         filename = join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'Annotations', sample_id + '.xml')
         tree = ET.parse(filename)
         objs = tree.findall('object')
@@ -239,7 +238,9 @@ class PascalVOCDataset(Dataset):
 
         overlaps = scipy.sparse.csr_matrix(overlaps)
 
-        return {'boxes': boxes,
+        return {'width': width,
+                'height': height,
+                'boxes': boxes,
                 'gt_classes': gt_classes,
                 'gt_overlaps': overlaps,
                 'flipped': False}#,
@@ -247,7 +248,7 @@ class PascalVOCDataset(Dataset):
 
     def _flip_annotation(self, annotation, sample_id):
 
-        width = self.load_img(self.get_img_path(sample_id)).size[0]
+        width = self.load_img(sample_id).size[0]
 
         boxes = annotation['boxes'].copy()
         oldx1 = boxes[:, 0].copy()
@@ -256,13 +257,15 @@ class PascalVOCDataset(Dataset):
         boxes[:, 2] = width - oldx1 - 1
         assert (boxes[:, 2] >= boxes[:, 0]).all()
 
-        return {'boxes': boxes,
+        return {'width': annotation['width'],
+                'height': annotation['height'],
+                'boxes': boxes,
                 'gt_classes': annotation['gt_classes'],
                 'gt_overlaps': annotation['gt_overlaps'],
                 'flipped': True}
 
     @staticmethod
-    def load_img(path, flip=False):
+    def load_img_from_path(path, flip=False):
 
         # todo either turn image to tensor in transform or do here
         # Load the image
@@ -273,6 +276,13 @@ class PascalVOCDataset(Dataset):
             image = image.transpose(Image.FLIP_LEFT_RIGHT)
 
         return image
+
+    def load_img(self, sample_id):
+        if self.use_flipped and sample_id[-2:] == '_f':
+            return self.load_img_from_path(self.get_img_path(sample_id), flip=True)
+        else:
+            return self.load_img_from_path(self.get_img_path(sample_id), flip=False)
+
 
     def stats(self):
         # get the stats to print
