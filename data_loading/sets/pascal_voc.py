@@ -152,14 +152,22 @@ class PascalVOCDataset(Dataset):
 
     def load_data_split(self, cache=True):
         # assert we can do this split
-        assert self.split in ['train', 'val']
+        assert self.split in ['train', 'val', 'trainval', 'test']
+        if self.split == 'test':
+            assert self.year == '2007'
 
         # keep only the split samples
         if self.split == 'train':
             with open(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'ImageSets', 'Main', 'train.txt')) as f:
                 lines = f.readlines()
+        elif self.split == 'trainval':
+            with open(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'ImageSets', 'Main', 'trainval.txt')) as f:
+                lines = f.readlines()
         elif self.split == 'val':
             with open(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'ImageSets', 'Main', 'val.txt')) as f:
+                lines = f.readlines()
+        elif self.split == 'test':
+            with open(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'ImageSets', 'Main', 'test.txt')) as f:
                 lines = f.readlines()
 
         sample_ids = [line.strip() for line in lines]
