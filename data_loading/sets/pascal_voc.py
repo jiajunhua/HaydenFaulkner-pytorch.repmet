@@ -94,9 +94,9 @@ class PascalVOCDataset(Dataset):
 
         # load the image
         if self.use_flipped and sample_id[-2:] == '_f':
-            x = self.load_img(self._get_img_path(sample_id), flip=True)
+            x = self.load_img(self.get_img_path(sample_id), flip=True)
         else:
-            x = self.load_img(self._get_img_path(sample_id), flip=False)
+            x = self.load_img(self.get_img_path(sample_id), flip=False)
         y = self.data[sample_id]
 
         # perform the transforms
@@ -108,7 +108,7 @@ class PascalVOCDataset(Dataset):
 
         return x, y
 
-    def _get_img_path(self, sample_id):
+    def get_img_path(self, sample_id):
         if self.use_flipped and sample_id[-2:] == '_f':
             sample_id = sample_id[:-2]
         return join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'JPEGImages', "%s.jpg" % sample_id)
@@ -247,7 +247,7 @@ class PascalVOCDataset(Dataset):
 
     def _flip_annotation(self, annotation, sample_id):
 
-        width = self.load_img(self._get_img_path(sample_id)).size[0]
+        width = self.load_img(self.get_img_path(sample_id)).size[0]
 
         boxes = annotation['boxes'].copy()
         oldx1 = boxes[:, 0].copy()
