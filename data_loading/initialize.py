@@ -2,7 +2,7 @@ from torchvision import transforms as trns
 from torchvision.datasets import MNIST
 
 from data_loading.samplers import EpisodeBatchSampler, MagnetBatchSampler
-from data_loading.sets import OmniglotDataset, OxfordFlowersDataset, OxfordPetsDataset, StanfordDogsDataset
+from data_loading.sets import OmniglotDataset, OxfordFlowersDataset, OxfordPetsDataset, StanfordDogsDataset, PascalVOCDataset, CombinedDataset
 
 
 def initialize_dataset(config, dataset_name, dataset_id, split, input_size, mean, std):
@@ -71,6 +71,41 @@ def initialize_dataset(config, dataset_name, dataset_id, split, input_size, mean
                              download=True)
                 dset.labels = dset.test_labels
             return dset
+
+    elif dataset_name == 'voc':
+        if dataset_id == '00':
+
+            transforms = trns.Compose([trns.ToTensor()])
+
+            if split == 'train':
+
+                pv07 = PascalVOCDataset(root_dir=config.dataset.root_dir,
+                                        split='trainval',
+                                        year='2007',
+                                        transform=transforms,
+                                        categories_subset=config.dataset.classes,
+                                        use_flipped=config.dataset.use_flipped,
+                                        use_difficult=config.dataset.use_difficult)
+                pv12 = PascalVOCDataset(root_dir=config.dataset.root_dir,
+                                        split='trainval',
+                                        year='2012',
+                                        transform=transforms,
+                                        categories_subset=config.dataset.classes,
+                                        use_flipped=config.dataset.use_flipped,
+                                        use_difficult=config.dataset.use_difficult)
+
+                return CombinedDataset([pv07, pv12])
+            elif split == 'val':
+                return PascalVOCDataset(root_dir=config.dataset.root_dir,
+                                        split='test',
+                                        year='2007',
+                                        transform=transforms,
+                                        categories_subset=config.dataset.classes,
+                                        use_flipped=config.dataset.use_flipped,
+                                        use_difficult=config.dataset.use_difficult)
+
+            else:
+                raise ValueError("Split '%s' not recognised for the %s dataset (id: %s)." % (split, dataset_name, dataset_id))
     else:
         raise ValueError("Dataset '%s' not recognised." % dataset_name)
 
