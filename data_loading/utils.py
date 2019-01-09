@@ -40,36 +40,6 @@ def prepare_dataset(dataset):
     return dataset
 
 
-def rank_data_ratio(dataset):
-
-    data = dataset.data
-    # rank data based on the ratio between width and height.
-    ratio_large = 2  # largest ratio to preserve.
-    ratio_small = 0.5  # smallest ratio to preserve.
-
-    ratio_list = []
-    for sample_id in data.keys():
-        width = data[sample_id]['width']
-        height = data[sample_id]['height']
-        ratio = width / float(height)
-
-        if ratio > ratio_large:
-            data[sample_id]['need_crop'] = 1
-            ratio = ratio_large
-        elif ratio < ratio_small:
-            data[sample_id]['need_crop'] = 1
-            ratio = ratio_small
-        else:
-            data[sample_id]['need_crop'] = 0
-
-        ratio_list.append(ratio)
-
-    ratio_list = np.array(ratio_list)
-    ratio_index = np.argsort(ratio_list)
-
-    return ratio_list[ratio_index], ratio_index
-
-
 def filter_dataset(dataset):
     # todo if dataset written correctly it should never pick up any samples with 0 boxes
     """
