@@ -3,7 +3,8 @@ from torchvision.datasets import MNIST
 
 from data_loading.samplers import EpisodeBatchSampler, MagnetBatchSampler
 from data_loading.sets import OmniglotDataset, OxfordFlowersDataset, OxfordPetsDataset, StanfordDogsDataset, PascalVOCDataset, CombinedDataset
-
+from data_loading.utils import prepare_dataset
+from data_loading.detection_wrapper import DetectionWrapper
 
 def initialize_dataset(config, dataset_name, dataset_id, split, input_size, mean, std):
 
@@ -18,7 +19,7 @@ def initialize_dataset(config, dataset_name, dataset_id, split, input_size, mean
             transforms = trns.Compose([trns.Resize((input_size, input_size)),
                                        trns.RandomHorizontalFlip(),
                                        trns.ToTensor(),
-                                       trns.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # normalise with model zoo
+                                       trns.Normalize(mean=mean, std=std)  # normalise with model zoo
                                        ])
 
             return OxfordFlowersDataset(root_dir=config.dataset.root_dir,
@@ -31,7 +32,7 @@ def initialize_dataset(config, dataset_name, dataset_id, split, input_size, mean
             transforms = trns.Compose([trns.Resize((input_size, input_size)),
                                        trns.RandomHorizontalFlip(),
                                        trns.ToTensor(),
-                                       trns.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # normalise with model zoo
+                                       trns.Normalize(mean=mean, std=std)  # normalise with model zoo
                                        ])
             if split == 'train':
                 split = 'trainval'
@@ -44,7 +45,7 @@ def initialize_dataset(config, dataset_name, dataset_id, split, input_size, mean
             # Setup Transforms instead of doing in the specific dataset class
             transforms = trns.Compose([trns.Resize((input_size, input_size)),
                                        trns.ToTensor(),
-                                       trns.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # normalise with model zoo
+                                       trns.Normalize(mean=mean, std=std)  # normalise with model zoo
                                        ])
 
             return StanfordDogsDataset(root_dir=config.dataset.root_dir,
@@ -94,15 +95,26 @@ def initialize_dataset(config, dataset_name, dataset_id, split, input_size, mean
                                         use_flipped=config.dataset.use_flipped,
                                         use_difficult=config.dataset.use_difficult)
 
-                return CombinedDataset([pv07, pv12])
+                cd = CombinedDataset([pv07, pv12])
+
+                cd = prepare_dataset(cd)
+                cd = DetectionWrapper(cd, config, training=True, normalize=None)
+
+                return cd
+
             elif split == 'val':
-                return PascalVOCDataset(root_dir=config.dataset.root_dir,
-                                        split='test',
-                                        year='2007',
-                                        transform=transforms,
-                                        categories_subset=config.dataset.classes,
-                                        use_flipped=config.dataset.use_flipped,
-                                        use_difficult=config.dataset.use_difficult)
+                cd = PascalVOCDataset(root_dir=config.dataset.root_dir,
+                                      split='test',
+                                      year='2007',
+                                      transform=transforms,
+                                      categories_subset=config.dataset.classes,
+                                      use_flipped=config.dataset.use_flipped,
+                                      use_difficult=config.dataset.use_difficult)
+
+                cd = prepare_dataset(cd)
+                cd = DetectionWrapper(cd, config, training=False, normalize=None)
+
+                return cd
 
             else:
                 raise ValueError("Split '%s' not recognised for the %s dataset (id: %s)." % (split, dataset_name, dataset_id))
