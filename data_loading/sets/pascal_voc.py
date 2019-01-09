@@ -15,6 +15,8 @@ Val
 Boxes per image (min, avg, max): 1, 2, 39
 Boxes per category (min, avg, max): 285, 692, 4372
 
+Flipped doubles the # boxes and images
+
 http://host.robots.ox.ac.uk/pascal/VOC/
 """
 
@@ -46,7 +48,8 @@ class PascalVOCDataset(Dataset):
                  target_transform=None,
                  force_download=False,
                  categories_subset=None,
-                 use_difficult=False):
+                 use_difficult=False,
+                 use_flipped=False):
         """
         :param root_dir: (string) the directory where the dataset will be stored
         :param split: (string) 'train' or 'val'
@@ -55,6 +58,8 @@ class PascalVOCDataset(Dataset):
         :param target_transform: how to transform the target
         :param force_download: (boolean) force a new download of the dataset
         :param categories_subset: (iterable) specify a subset of categories to build this set from
+        :param use_difficult: (boolean) include samples marked as difficult
+        :param use_flipped: (boolean) add horizontally flipped samples
         """
 
         super(PascalVOCDataset, self).__init__()
@@ -66,6 +71,7 @@ class PascalVOCDataset(Dataset):
         self.transform = transform
         self.target_transform = target_transform
         self.use_difficult = use_difficult
+        self.use_flipped = use_flipped
 
         # setup the categories
         self.categories, self.categories_to_labels, self.labels_to_categories = self._init_categories(categories_subset)
@@ -87,7 +93,10 @@ class PascalVOCDataset(Dataset):
         sample_id = self.sample_ids[index]
 
         # load the image
-        x = self.load_img(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'JPEGImages', "%s.jpg" % sample_id))
+        if self.use_flipped and sample_id[-2:] == '_f':
+            x = self.load_img(self._get_img_path(sample_id), flip=True)
+        else:
+            x = self.load_img(self._get_img_path(sample_id), flip=False)
         y = self.data[sample_id]
 
         # perform the transforms
@@ -98,6 +107,11 @@ class PascalVOCDataset(Dataset):
             y = self.target_transform(y)
 
         return x, y
+
+    def _get_img_path(self, sample_id):
+        if self.use_flipped and sample_id[-2:] == '_f':
+            sample_id = sample_id[:-2]
+        return join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'JPEGImages', "%s.jpg" % sample_id)
 
     def download(self, force=False):
         # check for existence, if so return
@@ -159,7 +173,10 @@ class PascalVOCDataset(Dataset):
                 print("Not using default categories so not caching for now...")
                 # todo load normal cache and delete data entries
             else:
-                cache_file = join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, self.split+'_data_cache.pkl')
+                if self.use_flipped:
+                    cache_file = join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, self.split+'_data_cache_wflipped.pkl')
+                else:
+                    cache_file = join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, self.split+'_data_cache.pkl')
                 if os.path.exists(cache_file):
                     with open(cache_file, 'rb') as fid:
                         try:
@@ -175,8 +192,11 @@ class PascalVOCDataset(Dataset):
             annotation = self._load_annotation(sample_id)
             if len(annotation['boxes'] > 0):  # only add sample to set if it contains at least one gt box
                 data[sample_id] = annotation
+                if self.use_flipped:
+                    flipped_annotation = self._flip_annotation(annotation, sample_id)
+                    data[sample_id+'_f'] = flipped_annotation
 
-        # safe cache if desired
+        # save cache if desired
         if cache and self.n_categories == 21:
             with open(cache_file, 'wb') as fid:
                 pickle.dump(data, fid, pickle.HIGHEST_PROTOCOL)
@@ -222,16 +242,35 @@ class PascalVOCDataset(Dataset):
         return {'boxes': boxes,
                 'gt_classes': gt_classes,
                 'gt_overlaps': overlaps,
-                'flipped': False,
-                'seg_areas': seg_areas}
+                'flipped': False}#,
+                # 'seg_areas': seg_areas}
+
+    def _flip_annotation(self, annotation, sample_id):
+
+        width = self.load_img(self._get_img_path(sample_id)).size[0]
+
+        boxes = annotation['boxes'].copy()
+        oldx1 = boxes[:, 0].copy()
+        oldx2 = boxes[:, 2].copy()
+        boxes[:, 0] = width - oldx2 - 1
+        boxes[:, 2] = width - oldx1 - 1
+        assert (boxes[:, 2] >= boxes[:, 0]).all()
+
+        return {'boxes': boxes,
+                'gt_classes': annotation['gt_classes'],
+                'gt_overlaps': annotation['gt_overlaps'],
+                'flipped': True}
 
     @staticmethod
-    def load_img(path):
+    def load_img(path, flip=False):
 
         # todo either turn image to tensor in transform or do here
         # Load the image
         ImageFile.LOAD_TRUNCATED_IMAGES = True
         image = Image.open(path).convert('RGB')
+
+        if flip:
+            image = image.transpose(Image.FLIP_LEFT_RIGHT)
 
         return image
 
@@ -312,7 +351,7 @@ if __name__ == "__main__":
     set_working_dir()
 
     # load the dataset
-    dataset = PascalVOCDataset(root_dir=config.dataset.root_dir, split='train')
+    dataset = PascalVOCDataset(root_dir=config.dataset.root_dir, split='train', use_flipped=True)
 
     # print the stats
     print(dataset.stats())
