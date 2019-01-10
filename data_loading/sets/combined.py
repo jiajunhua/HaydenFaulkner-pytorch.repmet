@@ -61,6 +61,9 @@ class CombinedDataset(Dataset):
 
         return x, y
 
+    def get_img_path(self, sample_id):
+        return self.sample_ids_sets[sample_id].get_img_path(sample_id)
+
     def stats(self):
         # get the stats to print
         boxes_p_cls, boxes_p_img = self.class_counts()
