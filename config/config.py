@@ -31,12 +31,19 @@ config.model.backbone = edict()
 config.model.backbone.name = ''  # What model spec to use for the backbone, if backbone nec
 config.model.backbone.out_layer = ''  # What layer do we take from the backbone net
 
+# Detection
+config.model.max_n_gt_boxes = 20
+
 # Dataset Defaults
 config.dataset = edict()
 config.dataset.root_dir = 'data'
 config.dataset.name = None
 config.dataset.id = None
 config.dataset.classes = ''
+
+# detection
+config.dataset.use_flipped = True
+config.dataset.use_difficult = False
 
 # Train Defaults
 config.train = edict()
@@ -65,6 +72,15 @@ config.train.d = ''
 config.train.alpha = ''
 config.train.sigma = ''
 
+# detection
+config.train.scales = (600,)  # Scale to use during testing (can list multiple scales) The scale is the pixel size of an image's shortest side
+config.train.max_size = 1000  # Max pixel size of the longest side of a scaled input image
+
+
+config.train.img_per_batch = 1  # Images to use per minibatch
+config.train.batch_size = 128  # Minibatch size (number of regions of interest [ROIs])
+
+config.train.use_all_gt = True  # For COCO, setting USE_ALL_GT to False will exclude boxes that are flagged as ''iscrowd''
 
 # Validation Defaults
 config.val = edict()
