@@ -111,44 +111,64 @@ class PascalVOCDataset(Dataset):
         return join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'JPEGImages', "%s.jpg" % sample_id)
 
     def download(self, force=False):
+        if self.split != 'test':
         # check for existence, if so return
-        if os.path.exists(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'JPEGImages'))\
-                and os.path.exists(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'Annotations'))\
-                and os.path.exists(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'ImageSets')):
-            if not force and len(os.listdir(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'JPEGImages'))) == 17125:
-                print('Files already downloaded and verified')
-                return
-            else:
-                shutil.rmtree(self.root_dir)
+            if os.path.exists(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'JPEGImages'))\
+                    and os.path.exists(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'Annotations'))\
+                    and os.path.exists(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'ImageSets')):
+                if not force:
+                    print('Files already downloaded and verified')
+                    return
+                else:
+                    shutil.rmtree(self.root_dir)
 
-        # make the dirs and start the downloads
-        os.makedirs(self.root_dir, exist_ok=True)
-        if self.year == '2012':
-            filename = 'VOCtrainval_11-May-2012'
-            md5 = '6cd6e144f989b92b3379bac3b3de84fd'
-        elif self.year == '2011':
-            filename = 'VOCtrainval_25-May-2011'
-            md5 = '6c3384ef61512963050cb5d687e5bf1e'
-        elif self.year == '2010':
-            filename = 'VOCtrainval_03-May-2010'
-            md5 = 'da459979d0c395079b5c75ee67908abb'
-        elif self.year == '2009':
-            filename = 'VOCtrainval_11-May-2009'
-            md5 = '59065e4b188729180974ef6572f6a212'
-        elif self.year == '2008':
-            filename = 'VOCtrainval_14-Jul-2008'
-            md5 = '2629fa636546599198acfcfbfcf1904a'
-        elif self.year == '2007':
-            filename = 'VOCtrainval_06-Nov-2007'
-            md5 = 'c52e279531787c972589f7e41ab4ae64'
+            # make the dirs and start the downloads
+            os.makedirs(self.root_dir, exist_ok=True)
+            if self.year == '2012':
+                filename = 'VOCtrainval_11-May-2012'
+                md5 = '6cd6e144f989b92b3379bac3b3de84fd'
+            elif self.year == '2011':
+                filename = 'VOCtrainval_25-May-2011'
+                md5 = '6c3384ef61512963050cb5d687e5bf1e'
+            elif self.year == '2010':
+                filename = 'VOCtrainval_03-May-2010'
+                md5 = 'da459979d0c395079b5c75ee67908abb'
+            elif self.year == '2009':
+                filename = 'VOCtrainval_11-May-2009'
+                md5 = '59065e4b188729180974ef6572f6a212'
+            elif self.year == '2008':
+                filename = 'VOCtrainval_14-Jul-2008'
+                md5 = '2629fa636546599198acfcfbfcf1904a'
+            elif self.year == '2007':
+                filename = 'VOCtrainval_06-Nov-2007'
+                md5 = 'c52e279531787c972589f7e41ab4ae64'
 
-        tar_filename = filename + '.tar'
-        url = join(self.download_url_prefix, 'voc'+self.year, tar_filename)
-        download_url(url, self.root_dir, tar_filename, md5)
+            tar_filename = filename + '.tar'
+            url = join(self.download_url_prefix, 'voc'+self.year, tar_filename)
+            download_url(url, self.root_dir, tar_filename, md5)
 
-        with tarfile.open(join(self.root_dir, tar_filename), 'r') as tar_file:
-            tar_file.extractall(self.root_dir)
-        os.remove(join(self.root_dir, tar_filename))
+            with tarfile.open(join(self.root_dir, tar_filename), 'r') as tar_file:
+                tar_file.extractall(self.root_dir)
+            os.remove(join(self.root_dir, tar_filename))
+
+        else:
+            assert self.year == '2007'
+            if os.path.exists(join(self.root_dir, 'VOCdevkit', 'VOC'+self.year, 'ImageSets', 'Main', 'test.txt')):
+                if not force:
+                    print('Files already downloaded and verified')
+                    return
+                else:
+                    shutil.rmtree(self.root_dir)
+
+            filename = 'VOCtest_06-Nov-2007'
+
+            tar_filename = filename + '.tar'
+            url = join(self.download_url_prefix, 'voc' + self.year, tar_filename)
+            download_url(url, self.root_dir, tar_filename, None)
+
+            with tarfile.open(join(self.root_dir, tar_filename), 'r') as tar_file:
+                tar_file.extractall(self.root_dir)
+            os.remove(join(self.root_dir, tar_filename))
 
     def load_data_split(self, cache=True):
         # assert we can do this split
@@ -369,7 +389,7 @@ if __name__ == "__main__":
     set_working_dir()
 
     # load the dataset
-    dataset = PascalVOCDataset(root_dir=config.dataset.root_dir, split='train', use_flipped=True)
+    dataset = PascalVOCDataset(root_dir=config.dataset.root_dir, split='test', year='2007', use_flipped=False)
 
     # print the stats
     print(dataset.stats())
