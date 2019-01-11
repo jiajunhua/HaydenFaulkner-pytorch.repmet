@@ -1,7 +1,7 @@
 from torchvision import transforms as trns
 from torchvision.datasets import MNIST
 
-from data_loading.samplers import EpisodeBatchSampler, MagnetBatchSampler
+from data_loading.samplers import EpisodeBatchSampler, MagnetBatchSampler, DetectionSampler
 from data_loading.sets import OmniglotDataset, OxfordFlowersDataset, OxfordPetsDataset, StanfordDogsDataset, PascalVOCDataset, CombinedDataset
 from data_loading.detection_wrapper import DetectionWrapper
 
@@ -167,6 +167,16 @@ def initialize_sampler(config, sampler_name, dataset, split):
                                       m=config.train.m,
                                       d=config.train.d,
                                       iterations=config.train.episodes)
+        elif split == 'val':
+            return None
+        elif split == 'test':
+            return None
+        else:
+            raise ValueError("Split '%s' not recognised for the %s sampler." % (split, sampler_name))
+    if sampler_name == 'detection':
+        if split == 'train':
+            return DetectionSampler(n_samples=len(dataset),
+                                    batch_size=config.train.batch_size)
         elif split == 'val':
             return None
         elif split == 'test':
