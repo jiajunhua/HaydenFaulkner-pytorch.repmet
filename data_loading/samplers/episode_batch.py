@@ -72,14 +72,14 @@ if __name__ == "__main__":
     # use this for debugging and checks
     from utils.debug import set_working_dir
     from config.config import config
-    from data_loading import OxfordFlowersDataset, OmniglotDataset
+    from data_loading.sets import OxfordFlowersDataset, OmniglotDataset
 
     # set the working directory as appropriate
     set_working_dir()
 
     # load the dataset
-    dataset = OxfordFlowersDataset(root_dir=config.data.root_dir)
-    dataset = OmniglotDataset(root_dir=config.data.root_dir)
+    dataset = OxfordFlowersDataset(root_dir=config.dataset.root_dir)
+    dataset = OmniglotDataset(root_dir=config.dataset.root_dir)
 
     # setup the the sampler
     sampler = EpisodeBatchSampler(labels=dataset.labels, categories_per_epi=12, num_samples=4, episodes=3)
