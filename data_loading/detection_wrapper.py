@@ -153,7 +153,7 @@ class DetectionWrapper(Dataset):
         #     im_scale = float(self.max_size) / float(im_size_max)
 
         # Scale the (PIL) image
-        img = trns.Resize((int(h*im_scale), int(w*im_scale)))(img)
+        img = trns.Resize((int(np.round(h*im_scale)), int(np.round(w*im_scale))))(img)
 
         # Scale the (NUMPY) gt_boxes
         gt_boxes[:, 0:4] = gt_boxes[:, 0:4] * im_scale
