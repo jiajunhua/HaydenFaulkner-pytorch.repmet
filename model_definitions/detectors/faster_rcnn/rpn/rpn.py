@@ -1,24 +1,26 @@
-from __future__ import absolute_import
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+
 from .proposal_layer import _ProposalLayer
 from .anchor_target_layer import _AnchorTargetLayer
-from ..utils import _smooth_l1_loss
+from utils.functions import _smooth_l1_loss
 
 
 class RPN(nn.Module):
     """ region proposal network """
 
-    def __init__(self, din):
+    def __init__(self, config, din, anchor_scales, anchor_ratios, feat_stride):
+
         super(RPN, self).__init__()
 
         self.din = din  # get depth of input feature map, e.g., 512
-        self.anchor_scales = cfg.ANCHOR_SCALES
-        self.anchor_ratios = cfg.ANCHOR_RATIOS
-        self.feat_stride = cfg.FEAT_STRIDE[0]
+        self.anchor_scales = anchor_scales
+        self.anchor_ratios = anchor_ratios
+        self.feat_stride = feat_stride[0]
 
         # define the convrelu layers processing input feature map
         self.RPN_Conv = nn.Conv2d(self.din, 512, 3, 1, 1, bias=True)
@@ -32,10 +34,29 @@ class RPN(nn.Module):
         self.RPN_bbox_pred = nn.Conv2d(512, self.nc_bbox_out, 1, 1, 0)
 
         # define proposal layer
-        self.RPN_proposal = _ProposalLayer(self.feat_stride, self.anchor_scales, self.anchor_ratios)
+        self.RPN_proposal = _ProposalLayer(feat_stride=self.feat_stride,
+                                           scales=self.anchor_scales,
+                                           ratios=self.anchor_ratios,
+                                           pre_nms_top_n={'TRAIN': config.train.rpn.pre_nms_top_n,
+                                                          'TEST': config.test.rpn.pre_nms_top_n},
+                                           post_nms_top_n={'TRAIN': config.train.rpn.post_nms_top_n,
+                                                           'TEST': config.test.rpn.post_nms_top_n},
+                                           nms_thresh={'TRAIN': config.train.rpn.nms_thresh,
+                                                       'TEST': config.test.rpn.nms_thresh},
+                                           min_size={'TRAIN': config.train.rpn.min_size,
+                                                     'TEST': config.test.rpn.min_size})
 
         # define anchor target layer
-        self.RPN_anchor_target = _AnchorTargetLayer(self.feat_stride, self.anchor_scales, self.anchor_ratios)
+        self.RPN_anchor_target = _AnchorTargetLayer(feat_stride=self.feat_stride,
+                                                    scales=self.anchor_scales,
+                                                    ratios=self.anchor_ratios,
+                                                    rpn_batch_size=config.train.rpn.batch_size,
+                                                    clobber_positives=config.train.rpn.clobber_positives,
+                                                    fg_fraction=config.train.rpn.fg_fraction,
+                                                    positive_overlap=config.train.rpn.positive_overlap,
+                                                    negative_overlap=config.train.rpn.negative_overlap,
+                                                    positive_weight=config.train.rpn.positive_weight,
+                                                    bbox_inside_weights=config.train.rpn.bbox_inside_weights)
 
         self.rpn_loss_cls = 0
         self.rpn_loss_box = 0
@@ -69,8 +90,7 @@ class RPN(nn.Module):
         # proposal layer
         cfg_key = 'TRAIN' if self.training else 'TEST'
 
-        rois = self.RPN_proposal((rpn_cls_prob.data, rpn_bbox_pred.data,
-                                  im_info, cfg_key))
+        rois = self.RPN_proposal((rpn_cls_prob.data, rpn_bbox_pred.data, im_info, cfg_key))
 
         self.rpn_loss_cls = 0
         self.rpn_loss_box = 0

@@ -11,15 +11,12 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import math
-import yaml
-# from model.utils.config import cfg
+
 from .generate_anchors import generate_anchors
 from .bbox_transform import bbox_transform_inv, clip_boxes, clip_boxes_batch
 # from model.nms.nms_wrapper import nms
-from model.roi_layers import nms  # todo come back to NMS as its in C and needs compilation
+from roi_layers import nms  # todo come back to NMS as its in C and needs compilation
 
-DEBUG = False
 
 class _ProposalLayer(nn.Module):
     """
@@ -27,12 +24,25 @@ class _ProposalLayer(nn.Module):
     transformations to a set of regular boxes (called "anchors").
     """
 
-    def __init__(self, feat_stride, scales, ratios):
+    def __init__(self,
+                 feat_stride,
+                 scales,
+                 ratios,
+                 pre_nms_top_n,
+                 post_nms_top_n,
+                 nms_thresh,
+                 min_size):
         super(_ProposalLayer, self).__init__()
 
         self._feat_stride = feat_stride
         self._anchors = torch.from_numpy(generate_anchors(scales=np.array(scales), ratios=np.array(ratios))).float()
         self._num_anchors = self._anchors.size(0)
+
+        self.pre_nms_top_n  = pre_nms_top_n
+        self.post_nms_top_n = post_nms_top_n
+        self.nms_thresh     = nms_thresh
+        self.min_size       = min_size
+
 
         # rois blob: holds R regions of interest, each is a 5-tuple
         # (n, x1, y1, x2, y2) specifying an image batch index n and a
@@ -64,12 +74,12 @@ class _ProposalLayer(nn.Module):
         scores = input[0][:, self._num_anchors:, :, :]
         bbox_deltas = input[1]
         im_info = input[2]
-        cfg_key = input[3]
+        cfg_key = input[3]  # TRAIN or TEST
 
-        pre_nms_topN  = cfg[cfg_key].RPN_PRE_NMS_TOP_N
-        post_nms_topN = cfg[cfg_key].RPN_POST_NMS_TOP_N
-        nms_thresh    = cfg[cfg_key].RPN_NMS_THRESH
-        min_size      = cfg[cfg_key].RPN_MIN_SIZE
+        pre_nms_topN  = self.pre_nms_top_n[cfg_key]
+        post_nms_topN = self.post_nms_top_n[cfg_key]
+        nms_thresh    = self.nms_thresh[cfg_key]
+        min_size      = self.min_size[cfg_key]
 
         batch_size = bbox_deltas.size(0)
 
@@ -151,8 +161,8 @@ class _ProposalLayer(nn.Module):
 
             # padding 0 at the end.
             num_proposal = proposals_single.size(0)
-            output[i,:,0] = i
-            output[i,:num_proposal,1:] = proposals_single
+            output[i, :, 0] = i
+            output[i, :num_proposal, 1:] = proposals_single
 
         return output
 
@@ -168,5 +178,5 @@ class _ProposalLayer(nn.Module):
         """Remove all boxes with any side smaller than min_size."""
         ws = boxes[:, :, 2] - boxes[:, :, 0] + 1
         hs = boxes[:, :, 3] - boxes[:, :, 1] + 1
-        keep = ((ws >= min_size.view(-1,1).expand_as(ws)) & (hs >= min_size.view(-1,1).expand_as(hs)))
+        keep = ((ws >= min_size.view(-1, 1).expand_as(ws)) & (hs >= min_size.view(-1, 1).expand_as(hs)))
         return keep

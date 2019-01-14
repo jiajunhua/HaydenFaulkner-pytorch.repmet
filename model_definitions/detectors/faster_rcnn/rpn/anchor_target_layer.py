@@ -26,7 +26,8 @@ class _AnchorTargetLayer(nn.Module):
         Assign anchors to ground-truth targets. Produces anchor classification
         labels and bounding-box regression targets.
     """
-    def __init__(self, feat_stride, scales, ratios):
+    def __init__(self, feat_stride, scales, ratios, rpn_batch_size, clobber_positives, fg_fraction, positive_overlap,
+                 negative_overlap, positive_weight, bbox_inside_weights):
         super(_AnchorTargetLayer, self).__init__()
 
         self._feat_stride = feat_stride
@@ -37,6 +38,18 @@ class _AnchorTargetLayer(nn.Module):
 
         # allow boxes to sit over the edge by a small amount
         self._allowed_border = 0  # default is 0
+
+        self.RPN_CLOBBER_POSITIVES = clobber_positives
+        self.RPN_POSITIVE_OVERLAP = positive_overlap
+        self.RPN_NEGATIVE_OVERLAP = negative_overlap
+
+        self.RPN_FG_FRACTION = fg_fraction
+
+        self.RPN_BATCHSIZE = rpn_batch_size
+
+        self.RPN_POSITIVE_WEIGHT = positive_weight
+        self.RPN_BBOX_INSIDE_WEIGHTS = bbox_inside_weights
+
 
     def forward(self, input):
         # Algorithm:
@@ -93,8 +106,8 @@ class _AnchorTargetLayer(nn.Module):
         max_overlaps, argmax_overlaps = torch.max(overlaps, 2)
         gt_max_overlaps, _ = torch.max(overlaps, 1)
 
-        if not cfg.TRAIN.RPN_CLOBBER_POSITIVES:
-            labels[max_overlaps < cfg.TRAIN.RPN_NEGATIVE_OVERLAP] = 0
+        if not self.RPN_CLOBBER_POSITIVES:
+            labels[max_overlaps < self.RPN_NEGATIVE_OVERLAP] = 0
 
         gt_max_overlaps[gt_max_overlaps==0] = 1e-5
         keep = torch.sum(overlaps.eq(gt_max_overlaps.view(batch_size,1,-1).expand_as(overlaps)), 2)
@@ -103,12 +116,12 @@ class _AnchorTargetLayer(nn.Module):
             labels[keep>0] = 1
 
         # fg label: above threshold IOU
-        labels[max_overlaps >= cfg.TRAIN.RPN_POSITIVE_OVERLAP] = 1
+        labels[max_overlaps >= self.RPN_POSITIVE_OVERLAP] = 1
 
-        if cfg.TRAIN.RPN_CLOBBER_POSITIVES:
-            labels[max_overlaps < cfg.TRAIN.RPN_NEGATIVE_OVERLAP] = 0
+        if self.RPN_CLOBBER_POSITIVES:
+            labels[max_overlaps < self.RPN_NEGATIVE_OVERLAP] = 0
 
-        num_fg = int(cfg.TRAIN.RPN_FG_FRACTION * cfg.TRAIN.RPN_BATCHSIZE)
+        num_fg = int(self.RPN_FG_FRACTION * self.RPN_BATCHSIZE)
 
         sum_fg = torch.sum((labels == 1).int(), 1)
         sum_bg = torch.sum((labels == 0).int(), 1)
@@ -126,7 +139,7 @@ class _AnchorTargetLayer(nn.Module):
                 labels[i][disable_inds] = -1
 
 #           num_bg = cfg.TRAIN.RPN_BATCHSIZE - sum_fg[i]
-            num_bg = cfg.TRAIN.RPN_BATCHSIZE - torch.sum((labels == 1).int(), 1)[i]
+            num_bg = self.RPN_BATCHSIZE - torch.sum((labels == 1).int(), 1)[i]
 
             # subsample negative labels if we have too many
             if sum_bg[i] > num_bg:
@@ -143,15 +156,15 @@ class _AnchorTargetLayer(nn.Module):
         bbox_targets = _compute_targets_batch(anchors, gt_boxes.view(-1,5)[argmax_overlaps.view(-1), :].view(batch_size, -1, 5))
 
         # use a single value instead of 4 values for easy index.
-        bbox_inside_weights[labels==1] = cfg.TRAIN.RPN_BBOX_INSIDE_WEIGHTS[0]
+        bbox_inside_weights[labels==1] = self.RPN_BBOX_INSIDE_WEIGHTS[0]
 
-        if cfg.TRAIN.RPN_POSITIVE_WEIGHT < 0:
+        if self.RPN_POSITIVE_WEIGHT < 0:
             num_examples = torch.sum(labels[i] >= 0)
             positive_weights = 1.0 / num_examples.item()
             negative_weights = 1.0 / num_examples.item()
         else:
-            assert ((cfg.TRAIN.RPN_POSITIVE_WEIGHT > 0) &
-                    (cfg.TRAIN.RPN_POSITIVE_WEIGHT < 1))
+            assert ((self.RPN_POSITIVE_WEIGHT > 0) &
+                    (self.RPN_POSITIVE_WEIGHT < 1))
 
         bbox_outside_weights[labels == 1] = positive_weights
         bbox_outside_weights[labels == 0] = negative_weights
@@ -163,24 +176,22 @@ class _AnchorTargetLayer(nn.Module):
 
         outputs = []
 
-        labels = labels.view(batch_size, height, width, A).permute(0,3,1,2).contiguous()
+        labels = labels.view(batch_size, height, width, A).permute(0, 3, 1, 2).contiguous()
         labels = labels.view(batch_size, 1, A * height, width)
         outputs.append(labels)
 
-        bbox_targets = bbox_targets.view(batch_size, height, width, A*4).permute(0,3,1,2).contiguous()
+        bbox_targets = bbox_targets.view(batch_size, height, width, A*4).permute(0, 3, 1, 2).contiguous()
         outputs.append(bbox_targets)
 
         anchors_count = bbox_inside_weights.size(1)
-        bbox_inside_weights = bbox_inside_weights.view(batch_size,anchors_count,1).expand(batch_size, anchors_count, 4)
+        bbox_inside_weights = bbox_inside_weights.view(batch_size, anchors_count, 1).expand(batch_size, anchors_count, 4)
 
-        bbox_inside_weights = bbox_inside_weights.contiguous().view(batch_size, height, width, 4*A)\
-                            .permute(0,3,1,2).contiguous()
+        bbox_inside_weights = bbox_inside_weights.contiguous().view(batch_size, height, width, 4*A).permute(0, 3, 1, 2).contiguous()
 
         outputs.append(bbox_inside_weights)
 
-        bbox_outside_weights = bbox_outside_weights.view(batch_size,anchors_count,1).expand(batch_size, anchors_count, 4)
-        bbox_outside_weights = bbox_outside_weights.contiguous().view(batch_size, height, width, 4*A)\
-                            .permute(0,3,1,2).contiguous()
+        bbox_outside_weights = bbox_outside_weights.view(batch_size, anchors_count, 1).expand(batch_size, anchors_count, 4)
+        bbox_outside_weights = bbox_outside_weights.contiguous().view(batch_size, height, width, 4*A).permute(0, 3, 1, 2).contiguous()
         outputs.append(bbox_outside_weights)
 
         return outputs

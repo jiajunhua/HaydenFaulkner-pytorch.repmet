@@ -1,7 +1,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 
 import torch  # Need this here so references correct torch imp
-import _C
+from roi_layers import _C
 
 nms = _C.nms
 # nms.__doc__ = """

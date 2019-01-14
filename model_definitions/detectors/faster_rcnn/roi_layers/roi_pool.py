@@ -5,7 +5,7 @@ from torch.autograd import Function
 from torch.autograd.function import once_differentiable
 from torch.nn.modules.utils import _pair
 
-import _C
+from roi_layers import _C
 
 
 class _ROIPool(Function):

@@ -28,11 +28,21 @@ config.model.emb_size = ''
 config.model.dist = 'euc'
 
 config.model.backbone = edict()
-config.model.backbone.name = ''  # What model spec to use for the backbone, if backbone nec
-config.model.backbone.out_layer = ''  # What layer do we take from the backbone net
+config.model.backbone.type = 'resnet'
+config.model.backbone.n_layers = 101
+config.model.backbone.pretrained = True
+config.model.backbone.resnet_fixed_blocks = 1
+
+config.model.rpn = edict()
+config.model.rpn.anchor_scales = [8, 16, 32]
+config.model.rpn.anchor_ratios = [0.5, 1, 2]
+config.model.rpn.feat_stride = [16, ]
 
 # Detection
 config.model.max_n_gt_boxes = 20
+config.model.class_agnostic = False
+config.model.pooling_mode = 'align'  # crop default in orig code but not imported so suggested never used
+config.model.pooling_size = 7
 
 # Dataset Defaults
 config.dataset = edict()
@@ -81,6 +91,40 @@ config.train.img_per_batch = 1  # Images to use per minibatch
 config.train.batch_size = 128  # Minibatch size (number of regions of interest [ROIs])
 
 config.train.use_all_gt = True  # For COCO, setting USE_ALL_GT to False will exclude boxes that are flagged as ''iscrowd''
+
+config.train.truncated = False  # Whether to initialize the weights with truncated normal distribution
+
+config.train.fg_fraction = 0.25  # Fraction of minibatch that is labeled foreground (i.e. class > 0)
+config.train.fg_thresh = 0.5  # Overlap threshold for a ROI to be considered foreground (if >= FG_THRESH)
+config.train.bg_thresh_high = 0.5  # Overlap threshold for a ROI to be considered background (class = 0 if overlap in [LO, HI))
+config.train.bg_thresh_low = 0.1
+
+# Normalize the targets using "precomputed" (or made up) means and stdevs
+# (BBOX_NORMALIZE_TARGETS must also be True)
+config.train.bbox_normalize_targets_precomputed = True
+config.train.bbox_normalize_means = (0.0, 0.0, 0.0, 0.0)
+config.train.bbox_normalize_stds = (0.1, 0.1, 0.2, 0.2)
+config.train.bbox_normalize_inside_weights = (1.0, 1.0, 1.0, 1.0)
+
+config.train.rpn = edict()
+config.train.rpn.pre_nms_top_n = 12000
+config.train.rpn.post_nms_top_n = 2000
+config.train.rpn.nms_thresh = 0.7
+config.train.rpn.min_size = 8
+config.train.rpn.batch_size = 256  # Total number of examples
+config.train.rpn.clobber_positives = False  # If an anchor statisfied by positive and negative conditions set to negative
+config.train.rpn.fg_fraction = 0.5  # Max number of foreground examples
+config.train.rpn.positive_overlap = 0.7  # IOU >= thresh: positive example
+config.train.rpn.negative_overlap = 0.3  # IOU < thresh: negative example
+
+# Give the positive RPN examples weight of p * 1 / {num positives}
+# and give negatives a weight of (1 - p)
+# Set to -1.0 to use uniform example weighting
+config.train.rpn.positive_weight = -1.0
+
+# Deprecated (outside weights)
+config.train.rpn.bbox_inside_weights = (1.0, 1.0, 1.0, 1.0)
+
 
 # Validation Defaults
 config.val = edict()
@@ -135,6 +179,11 @@ config.test.d = ''
 config.test.alpha = ''
 config.test.sigma = ''
 
+config.test.rpn = edict()
+config.test.rpn.pre_nms_top_n = 6000
+config.test.rpn.post_nms_top_n = 300
+config.test.rpn.nms_thresh = 0.7
+config.test.rpn.min_size = 16
 
 def update_config(config_file):
     with open(config_file) as f:

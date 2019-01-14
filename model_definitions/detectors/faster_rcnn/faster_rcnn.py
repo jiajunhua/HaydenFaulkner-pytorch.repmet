@@ -7,37 +7,49 @@ import torchvision.models as models
 from torch.autograd import Variable
 import numpy as np
 # from model.utils.config import cfg
-from .rpn.rpn import RPN
+from rpn.rpn import RPN
 
-from .roi_layers import ROIAlign, ROIPool
+from roi_layers import ROIAlign, ROIPool
 
 # from model.roi_pooling.modules.roi_pool import _RoIPooling
 # from model.roi_align.modules.roi_align import RoIAlignAvg
 
-from .rpn.proposal_target_layer_cascade import _ProposalTargetLayer
+from rpn.proposal_target_layer_cascade import _ProposalTargetLayer
 import time
-from .utils import _smooth_l1_loss #, _crop_pool_layer, _affine_grid_gen, _affine_theta
+from utils.functions import _smooth_l1_loss #, _crop_pool_layer, _affine_grid_gen, _affine_theta
 
 
 class fasterRCNN(nn.Module):
     """ faster RCNN """
-    def __init__(self, classes, class_agnostic):
+    def __init__(self,
+                 classes,
+                 config):
+
         super(fasterRCNN, self).__init__()
         self.classes = classes
         self.n_classes = len(classes)
-        self.class_agnostic = class_agnostic
+
+        self.class_agnostic = config.model.class_agnostic
+        self.backbone_type = config.model.backbone.type
+        self.pooling_mode = config.model.pooling_mode
+        self.truncated = config.train.truncated
+
         # loss
         self.RCNN_loss_cls = 0
         self.RCNN_loss_bbox = 0
 
         # Get backbone network
-        self.backbone_base, self.backbone_top, dout_base_model = self._init_backbone(type='resnet101', pretrained=False)
+        self.backbone_base, self.backbone_top, dout_base_model = self._init_backbone(type=config.model.backbone.type,
+                                                                                     n_layers=config.model.backbone.n_layers,
+                                                                                     pretrained=config.model.backbone.pretrained,
+                                                                                     fixed_blocks=config.model.backbone.resnet_fixed_blocks)
 
         # Set up the classification layers
-        if backbone_type == 'resnet':
+        if config.model.backbone.type == 'resnet':
             hid_dim = 2048
-        elif backbone_type == 'vgg':
+        elif config.model.backbone.type == 'vgg':
             hid_dim = 4096
+
         self.RCNN_cls_score = nn.Linear(hid_dim, self.n_classes)
         if self.class_agnostic:
             self.RCNN_bbox_pred = nn.Linear(hid_dim, 4)
@@ -46,14 +58,18 @@ class fasterRCNN(nn.Module):
 
 
         # define rpn
-        self.RCNN_rpn = RPN(dout_base_model)
-        self.RCNN_proposal_target = _ProposalTargetLayer(self.n_classes)
+        self.RCNN_rpn = RPN(config, dout_base_model,
+                            anchor_scales=config.model.rpn.anchor_scales,
+                            anchor_ratios=config.model.rpn.anchor_ratios,
+                            feat_stride=config.model.rpn.feat_stride)
+
+        self.RCNN_proposal_target = _ProposalTargetLayer(config, self.n_classes)
 
         # self.RCNN_roi_pool = _RoIPooling(cfg.POOLING_SIZE, cfg.POOLING_SIZE, 1.0/16.0)
         # self.RCNN_roi_align = RoIAlignAvg(cfg.POOLING_SIZE, cfg.POOLING_SIZE, 1.0/16.0)
 
-        self.RCNN_roi_pool = ROIPool((cfg.POOLING_SIZE, cfg.POOLING_SIZE), 1.0/16.0)
-        self.RCNN_roi_align = ROIAlign((cfg.POOLING_SIZE, cfg.POOLING_SIZE), 1.0/16.0, 0)
+        self.RCNN_roi_pool = ROIPool((config.model.pooling_size, config.model.pooling_size), 1.0/16.0)
+        self.RCNN_roi_align = ROIAlign((config.model.pooling_size, config.model.pooling_size), 1.0/16.0, 0)
 
         self._init_weights()
 
@@ -90,9 +106,9 @@ class fasterRCNN(nn.Module):
         rois = Variable(rois)
         # do roi pooling based on predicted rois
 
-        if cfg.POOLING_MODE == 'align':
+        if self.pooling_mode == 'align':
             pooled_feat = self.RCNN_roi_align(base_feat, rois.view(-1, 5))
-        elif cfg.POOLING_MODE == 'pool':
+        elif self.pooling_mode == 'pool':
             pooled_feat = self.RCNN_roi_pool(base_feat, rois.view(-1, 5))
 
         # feed pooled features to top model
@@ -138,21 +154,21 @@ class fasterRCNN(nn.Module):
                 m.weight.data.normal_(mean, stddev)
                 m.bias.data.zero_()
 
-        normal_init(self.RCNN_rpn.RPN_Conv, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.RCNN_rpn.RPN_cls_score, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.RCNN_rpn.RPN_bbox_pred, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.RCNN_cls_score, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.RCNN_bbox_pred, 0, 0.001, cfg.TRAIN.TRUNCATED)
+        normal_init(self.RCNN_rpn.RPN_Conv, 0, 0.01, self.truncated)
+        normal_init(self.RCNN_rpn.RPN_cls_score, 0, 0.01, self.truncated)
+        normal_init(self.RCNN_rpn.RPN_bbox_pred, 0, 0.01, self.truncated)
+        normal_init(self.RCNN_cls_score, 0, 0.01, self.truncated)
+        normal_init(self.RCNN_bbox_pred, 0, 0.001, self.truncated)
 
 
-    def _init_backbone(self, type='resnet101', pretrained=False):
+    def _init_backbone(self, type='resnet', n_layers=101, pretrained=False, fixed_blocks=None):
 
         # initialise the backbone and load weights
         if pretrained == 'caffe':
-            if type == 'resnet101':
+            if type == 'resnet' and n_layers == 101:
                 backbone = models.resnet101(pretrained=False)
                 model_path = 'data/pretrained_model/resnet101_caffe.pth'
-            elif type == 'vgg16':
+            elif type == 'vgg' and n_layers == 16:
                 backbone = models.vgg16(pretrained=False)
                 model_path = 'data/pretrained_model/vgg16_caffe.pth'
             else:
@@ -162,7 +178,7 @@ class fasterRCNN(nn.Module):
             state_dict = torch.load(model_path)
             backbone.load_state_dict({k: v for k, v in state_dict.items() if k in backbone.state_dict()})
 
-        elif type == 'resnet101':
+        elif type == 'resnet' and n_layers == 101:
             backbone = models.resnet101(pretrained=pretrained)
 
         if type == 'resnet':
@@ -178,12 +194,12 @@ class fasterRCNN(nn.Module):
             for p in backbone_base[0].parameters(): p.requires_grad = False
             for p in backbone_base[1].parameters(): p.requires_grad = False
 
-            assert (0 <= cfg.RESNET.FIXED_BLOCKS < 4)
-            if cfg.RESNET.FIXED_BLOCKS >= 3:
+            assert (0 <= fixed_blocks < 4)
+            if fixed_blocks >= 3:
                 for p in backbone_base[6].parameters(): p.requires_grad = False
-            if cfg.RESNET.FIXED_BLOCKS >= 2:
+            if fixed_blocks >= 2:
                 for p in backbone_base[5].parameters(): p.requires_grad = False
-            if cfg.RESNET.FIXED_BLOCKS >= 1:
+            if fixed_blocks >= 1:
                 for p in backbone_base[4].parameters(): p.requires_grad = False
 
             def set_bn_fix(m):
@@ -208,10 +224,10 @@ class fasterRCNN(nn.Module):
 
         return backbone_base, backbone_top, dout_base_model
 
-    def train(self, mode=True):
+    def train(self, mode=True): # for resnet only
         # Override train so that the training mode is set as we want
         nn.Module.train(self, mode)
-        if mode:
+        if mode and self.backbone_type == 'resnet':
             # Set fixed blocks to be in eval mode
             self.backbone_base.eval()
             self.backbone_base[5].train()
@@ -235,3 +251,15 @@ class fasterRCNN(nn.Module):
             fc7 = self.backbone_top(pool5_flat)
 
         return fc7
+
+if __name__ == "__main__":
+    # use this for debugging and checks
+    from utils.debug import set_working_dir
+    from config.config import config
+    import matplotlib.pyplot as plt
+
+    # set the working directory as appropriate
+    set_working_dir()
+
+    # load the dataset
+    model = fasterRCNN(list(range(100)), config=config)
