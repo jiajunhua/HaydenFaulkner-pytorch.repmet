@@ -69,6 +69,13 @@ def initialize_callbacks(config, model, datasets, samplers, dataloaders, losses,
                                        EmbeddingGrapher(every=config.vis.plot_embed_every, tb_sw=tb_sw, tag='val',
                                                         label_image=True)]
 
+    elif config.run_type == 'detection':
+
+        callbacks['batch_end'] = [TensorBoard(every=100, tb_sw=tb_sw)]
+
+        callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
+
+        callbacks['validation_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
 
     else:
         warnings.warn(config.run_type + "not recognised, no callbacks initialised.")
