@@ -1,0 +1,54 @@
+run_type: 'detection'
+run_id: 'det_test'
+seed: 7
+
+model:
+  type: 'fasterRCNN'
+  id: '01'  # frozen
+  emb_size: 120
+
+  backbone:
+    type: 'resnet'
+    n_layers: 101
+
+  max_n_gt_boxes: 20
+
+dataset:
+  name: 'voc'
+  id: '00'
+
+train:
+  sampler: 'detection'
+  loss: 'detection'
+
+  batch_size: 1
+
+  checkpoint_every: 10  # this many epochs
+
+  epochs: 7
+  learning_rate: 0.001
+
+  use_flipped: True
+  use_difficult: False
+
+  lr_scheduler_gamma: 0.5
+  lr_scheduler_step: 20
+
+val:
+  every: 1 #0  # run validation every x epochs
+
+  sampler: 'detection'
+  loss: 'detection'
+
+
+test:  # will only do one epoch
+  split: 'test'
+
+  resume_from: 'B'
+
+  sampler: 'detection'
+  loss: 'detection'
+
+
+vis:
+  every: 100  # update tensorboard every x steps (episodes)
