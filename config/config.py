@@ -65,9 +65,17 @@ config.train.checkpoint_every = 0  # 0 is never
 config.train.for_bs = 64  # the batch size for forward pass for building clusters (magnet) or reps (repmet), lower if running out of mem
 
 config.train.epochs = None
-config.train.learning_rate = None
+
+config.train.optimizer = 'adam'
+config.train.learning_rate = 0.001
 config.train.lr_scheduler_gamma = ''
 config.train.lr_scheduler_step = ''
+config.train.momentum = 0.9
+
+config.train.weight_decay = 0.0005  # Weight decay, for regularization
+config.train.bias_decay = False  # Whether to have weight decay on bias as well
+
+config.train.double_bias = True  # Whether to double the learning rate for bias
 
 config.train.episodes = ''
 # protos
@@ -185,28 +193,58 @@ config.test.rpn.post_nms_top_n = 300
 config.test.rpn.nms_thresh = 0.7
 config.test.rpn.min_size = 16
 
+# def update_config(config_file):
+#     with open(config_file) as f:
+#         exp_config = edict(yaml.load(f))
+#         for k, v in exp_config.items():
+#             if k in config:
+#                 if isinstance(v, dict):
+#                     if k == 'TRAIN':
+#                         if 'BBOX_WEIGHTS' in v:
+#                             v['BBOX_WEIGHTS'] = np.array(v['BBOX_WEIGHTS'])
+#                     elif k == 'network':
+#                         if 'PIXEL_MEANS' in v:
+#                             v['PIXEL_MEANS'] = np.array(v['PIXEL_MEANS'])
+#                     for vk, vv in v.items():
+#                         config[k][vk] = vv
+#                 else:
+#                     if k == 'SCALES':
+#                         config[k][0] = (tuple(v))
+#                     else:
+#                         config[k] = v
+#             else:
+#                 raise ValueError("key (%s) must exist in config.py" % k)
+
 def update_config(config_file):
     with open(config_file) as f:
         exp_config = edict(yaml.load(f))
-        for k, v in exp_config.items():
-            if k in config:
-                if isinstance(v, dict):
-                    if k == 'TRAIN':
-                        if 'BBOX_WEIGHTS' in v:
-                            v['BBOX_WEIGHTS'] = np.array(v['BBOX_WEIGHTS'])
-                    elif k == 'network':
-                        if 'PIXEL_MEANS' in v:
-                            v['PIXEL_MEANS'] = np.array(v['PIXEL_MEANS'])
-                    for vk, vv in v.items():
-                        config[k][vk] = vv
-                else:
-                    if k == 'SCALES':
-                        config[k][0] = (tuple(v))
-                    else:
-                        config[k] = v
-            else:
-                raise ValueError("key (%s) must exist in config.py" % k)
+        recursive_update(exp_config, c=config)
 
+        # for k, v in exp_config.items():
+        #     if k in config:
+        #         if isinstance(v, dict):
+        #             if k == 'TRAIN':
+        #                 if 'BBOX_WEIGHTS' in v:
+        #                     v['BBOX_WEIGHTS'] = np.array(v['BBOX_WEIGHTS'])
+        #             elif k == 'network':
+        #                 if 'PIXEL_MEANS' in v:
+        #                     v['PIXEL_MEANS'] = np.array(v['PIXEL_MEANS'])
+        #             for vk, vv in v.items():
+        #                 config[k][vk] = vv
+        #         else:
+        #             if k == 'SCALES':
+        #                 config[k][0] = (tuple(v))
+        #             else:
+        #                 config[k] = v
+        #     else:
+        #         raise ValueError("key (%s) must exist in config.py" % k)
+
+def recursive_update(in_config, c):
+    for ki, vi in in_config.items():
+        if isinstance(vi, edict):
+            recursive_update(vi, c[ki])
+        else:
+            c[ki] = vi
 
 def check_config(in_config, k=''):
     # recursive function to check for no Nones...
