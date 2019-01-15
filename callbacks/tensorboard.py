@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class TensorBoard(object):
 
     def __init__(self, every, tb_sw):
@@ -10,8 +11,8 @@ class TensorBoard(object):
 
         if step % self.every == 0:
 
-            if step < 3:  # todo grapher not working
-                self.tb_sw.add_graph(model(data['inputs']), data['inputs'])
+            # if step < 3:  # todo grapher not working
+            #     self.tb_sw.add_graph(model(data['inputs']), data['inputs'])
 
             for name, param in model.named_parameters():
                 self.tb_sw.add_histogram(tag=name, values=param.clone().cpu().data.numpy(), global_step=step)
