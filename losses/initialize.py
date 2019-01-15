@@ -1,4 +1,4 @@
-from losses import PrototypicalLoss, MagnetLoss, MagnetLossEval, RepmetLoss#, CrossEntropyLoss
+from losses import PrototypicalLoss, MagnetLoss, MagnetLossEval, RepmetLoss, DetectionLoss#, CrossEntropyLoss
 
 
 def initialize_loss(config, loss_name, split='train', n_classes=None):
@@ -34,6 +34,17 @@ def initialize_loss(config, loss_name, split='train', n_classes=None):
         elif split == 'test':
             return RepmetLoss(N=n_classes, k=config.train.k, emb_size=config.model.emb_size,
                               alpha=config.test.alpha, sigma=config.test.sigma, dist=config.model.dist)
+        else:
+            raise ValueError("Split '%s' not recognised for the %s loss." % (split, loss_name))
+
+    elif loss_name == 'detection':
+        assert n_classes is not None
+        if split == 'train':
+            return DetectionLoss()
+        elif split == 'val':
+            return DetectionLoss()
+        elif split == 'test':
+            return DetectionLoss()
         else:
             raise ValueError("Split '%s' not recognised for the %s loss." % (split, loss_name))
     elif loss_name == 'ce':
