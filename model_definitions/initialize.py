@@ -4,6 +4,7 @@ from model_definitions.others.encoder import Encoder
 from model_definitions.cnns.basics.protonet import ProtoNet
 from model_definitions.cnns.basics.lenet import LeNet
 from model_definitions.cnns.inceptions.googlenet import GoogLeNet
+from model_definitions.detectors.faster_rcnn.faster_rcnn import FasterRCNN
 
 
 def initialize_model(config, model_name, model_id):
@@ -114,6 +115,15 @@ def initialize_model(config, model_name, model_id):
             output_size = config.model.emb_size
 
             model = ProtoNet(x_dim=1, hid_dim=64, z_dim=output_size)
+
+    elif model_name == "fasterRCNN":
+        if model_id == '01':
+            # input_size = 28
+            # output_size = config.model.emb_size
+            input_size = None
+            output_size = None
+            model = FasterRCNN(output_size=config.model.emb_size,
+                               config=config)
 
     # elif model_name == "lenet":
     #     if model_id == '01':

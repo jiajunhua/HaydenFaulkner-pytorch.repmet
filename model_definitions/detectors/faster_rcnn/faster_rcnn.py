@@ -19,15 +19,14 @@ import time
 from utils.functions import _smooth_l1_loss #, _crop_pool_layer, _affine_grid_gen, _affine_theta
 
 
-class fasterRCNN(nn.Module):
+class FasterRCNN(nn.Module):
     """ faster RCNN """
     def __init__(self,
-                 classes,
+                 output_size,
                  config):
 
-        super(fasterRCNN, self).__init__()
-        self.classes = classes
-        self.n_classes = len(classes)
+        super(FasterRCNN, self).__init__()
+        self.output_size = output_size
 
         self.class_agnostic = config.model.class_agnostic
         self.backbone_type = config.model.backbone.type
@@ -50,11 +49,11 @@ class fasterRCNN(nn.Module):
         elif config.model.backbone.type == 'vgg':
             hid_dim = 4096
 
-        self.RCNN_cls_score = nn.Linear(hid_dim, self.n_classes)
+        self.RCNN_cls_score = nn.Linear(hid_dim, self.output_size)
         if self.class_agnostic:
             self.RCNN_bbox_pred = nn.Linear(hid_dim, 4)
         else:
-            self.RCNN_bbox_pred = nn.Linear(hid_dim, 4 * self.n_classes)
+            self.RCNN_bbox_pred = nn.Linear(hid_dim, 4 * self.output_size)
 
 
         # define rpn
@@ -63,7 +62,7 @@ class fasterRCNN(nn.Module):
                             anchor_ratios=config.model.rpn.anchor_ratios,
                             feat_stride=config.model.rpn.feat_stride)
 
-        self.RCNN_proposal_target = _ProposalTargetLayer(config, self.n_classes)
+        self.RCNN_proposal_target = _ProposalTargetLayer(config, self.output_size)
 
         # self.RCNN_roi_pool = _RoIPooling(cfg.POOLING_SIZE, cfg.POOLING_SIZE, 1.0/16.0)
         # self.RCNN_roi_align = RoIAlignAvg(cfg.POOLING_SIZE, cfg.POOLING_SIZE, 1.0/16.0)
@@ -243,10 +242,10 @@ class fasterRCNN(nn.Module):
 
     def _head_to_tail(self, pool5):
 
-        if self.backbone == 'resnet':
+        if self.backbone_type == 'resnet':
             fc7 = self.backbone_top(pool5).mean(3).mean(2)
 
-        elif self.backbone == 'vgg':
+        elif self.backbone_type == 'vgg':
             pool5_flat = pool5.view(pool5.size(0), -1)
             fc7 = self.backbone_top(pool5_flat)
 
@@ -262,4 +261,4 @@ if __name__ == "__main__":
     set_working_dir()
 
     # load the dataset
-    model = fasterRCNN(list(range(100)), config=config)
+    model = FasterRCNN(list(range(100)), config=config)
