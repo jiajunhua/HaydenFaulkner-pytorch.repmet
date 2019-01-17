@@ -9,7 +9,7 @@ class TensorBoard(object):
 
     def __call__(self, epoch, batch, step, model, dataloaders, losses, optimizer, data, stats):
 
-        if step % self.every == 0:
+        if step % self.every == 0 and step > 0:
 
             # if step < 3:  # todo grapher not working
             #     self.tb_sw.add_graph(model(data['inputs']), data['inputs'])
@@ -19,7 +19,14 @@ class TensorBoard(object):
 
             for k, v in stats.items():
                 if k != 'sample_losses':
-                    self.tb_sw.add_scalar(tag=k, scalar_value=v, global_step=step)
+                    if isinstance(v, list):
+                        # for i in range(self.every):
+                        #     self.tb_sw.add_scalar(tag=k, scalar_value=v[step-self.every+i], global_step=step-self.every+i)
+
+                        v = np.mean(v[-self.every:])
+                        self.tb_sw.add_scalar(tag=k, scalar_value=v, global_step=step)
+                    else:
+                        self.tb_sw.add_scalar(tag=k, scalar_value=v, global_step=step)
 
             if hasattr(losses['train'], 'variances'):
                 self.tb_sw.add_scalar(tag='variances', scalar_value=losses['train'].variances[-1], global_step=step)
