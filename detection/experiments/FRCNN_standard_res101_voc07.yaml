@@ -1,11 +1,11 @@
 run_type: 'detection'
-run_id: 'det_test_sgd'
+run_id: 'FRCNN_standard_res101_voc07'
 seed: 7
 
 model:
   type: 'fasterRCNN'
   id: '01'  # frozen
-  emb_size: 120
+  emb_size: 120  # num_classes
 
   backbone:
     type: 'resnet'
