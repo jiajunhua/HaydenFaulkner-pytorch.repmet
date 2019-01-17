@@ -1,22 +1,16 @@
-import random
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 import torchvision.models as models
 from torch.autograd import Variable
-import numpy as np
-# from model.utils.config import cfg
 from rpn.rpn import RPN
 
 from roi_layers import ROIAlign, ROIPool
 
-# from model.roi_pooling.modules.roi_pool import _RoIPooling
-# from model.roi_align.modules.roi_align import RoIAlignAvg
-
 from rpn.proposal_target_layer_cascade import _ProposalTargetLayer
-import time
-from utils.functions import _smooth_l1_loss #, _crop_pool_layer, _affine_grid_gen, _affine_theta
+
+from utils.functions import _smooth_l1_loss
 
 
 class FasterRCNN(nn.Module):
@@ -32,10 +26,6 @@ class FasterRCNN(nn.Module):
         self.backbone_type = config.model.backbone.type
         self.pooling_mode = config.model.pooling_mode
         self.truncated = config.train.truncated
-
-        # loss
-        self.RCNN_loss_cls = 0
-        self.RCNN_loss_bbox = 0
 
         # Get backbone network
         self.backbone_base, self.backbone_top, dout_base_model = self._init_backbone(type=config.model.backbone.type,
@@ -55,7 +45,6 @@ class FasterRCNN(nn.Module):
         else:
             self.RCNN_bbox_pred = nn.Linear(hid_dim, 4 * self.output_size)
 
-
         # define rpn
         self.RCNN_rpn = RPN(config, dout_base_model,
                             anchor_scales=config.model.rpn.anchor_scales,
@@ -63,9 +52,6 @@ class FasterRCNN(nn.Module):
                             feat_stride=config.model.rpn.feat_stride)
 
         self.RCNN_proposal_target = _ProposalTargetLayer(config, self.output_size)
-
-        # self.RCNN_roi_pool = _RoIPooling(cfg.POOLING_SIZE, cfg.POOLING_SIZE, 1.0/16.0)
-        # self.RCNN_roi_align = RoIAlignAvg(cfg.POOLING_SIZE, cfg.POOLING_SIZE, 1.0/16.0)
 
         self.RCNN_roi_pool = ROIPool((config.model.pooling_size, config.model.pooling_size), 1.0/16.0)
         self.RCNN_roi_align = ROIAlign((config.model.pooling_size, config.model.pooling_size), 1.0/16.0, 0)
