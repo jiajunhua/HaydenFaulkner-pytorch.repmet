@@ -66,7 +66,7 @@ config.train.for_bs = 64  # the batch size for forward pass for building cluster
 
 config.train.epochs = None
 
-config.train.optimizer = 'adam'
+config.train.optimizer = 'sgd'
 config.train.learning_rate = 0.001
 config.train.lr_scheduler_gamma = ''
 config.train.lr_scheduler_step = ''
