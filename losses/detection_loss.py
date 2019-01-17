@@ -16,50 +16,93 @@ class DetectionLoss(nn.Module):
         bbox_pred = input[2]
         rpn_loss_cls = input[3]
         rpn_loss_box = input[4]
-        RCNN_loss_cls = input[5]
-        RCNN_loss_bbox = input[6]
+        rcnn_loss_cls = input[5]
+        rcnn_loss_bbox = input[6]
         rois_label = input[7]
 
+        im_info = target[2]
 
-        sample_losses = rpn_loss_cls + rpn_loss_box + RCNN_loss_cls + RCNN_loss_bbox
 
+        loss = rpn_loss_cls.mean() + rpn_loss_box.mean() + rcnn_loss_cls.mean() + rcnn_loss_bbox.mean()
+        acc = torch.Tensor([0])
 
-        soft_probs = numerator / (denominator + epsilon) + epsilon
-
-        _, pred = soft_probs.max(1)
-        acc = pred.eq(target.squeeze()).float().mean()
-
-        scores = cls_prob.data
-        boxes = rois.data[:, :, 1:5]
-
-        # if cfg.TEST.BBOX_REG:
-        #     # Apply bounding-box regression deltas
-        #     box_deltas = bbox_pred.data
-        #     if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
-        #         # Optionally normalize targets by a precomputed mean and stdev
-        #         if args.class_agnostic:
-        #             box_deltas = box_deltas.view(-1, 4) * torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_STDS).cuda() \
-        #                          + torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_MEANS).cuda()
-        #             box_deltas = box_deltas.view(1, -1, 4)
-        #         else:
-        #             box_deltas = box_deltas.view(-1, 4) * torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_STDS).cuda() \
-        #                          + torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_MEANS).cuda()
-        #             box_deltas = box_deltas.view(1, -1, 4 * len(imdb.classes))
+        # scores = cls_prob.data
+        # boxes = rois.data[:, :, 1:5]
         #
-        #     pred_boxes = bbox_transform_inv(boxes, box_deltas, 1)
-        #     pred_boxes = clip_boxes(pred_boxes, im_info.data, 1)
-        # else:
-        #     # Simply repeat the boxes, once for each class
-        #     pred_boxes = np.tile(boxes, (1, scores.shape[1]))
+        # pred_boxes, scores = self.transform_boxes(boxes, scores, im_info)
         #
-        # pred_boxes /= data[1][0][2].item()
+        # instance_all_boxes = self.instance_all_boxes(pred_boxes, scores)
+        #
+        # instance_map = #todo add function to take the instance boxes and calc map
+
+        return loss, rpn_loss_cls.mean(), rpn_loss_box.mean(), rcnn_loss_cls.mean(), rcnn_loss_bbox.mean(), acc
+
+
+    def transform_boxes(self, boxes, scores, im_info):
+        if cfg.TEST.BBOX_REG:
+            # Apply bounding-box regression deltas
+            box_deltas = bbox_pred.data
+            if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
+                # Optionally normalize targets by a precomputed mean and stdev
+                if args.class_agnostic:
+                    box_deltas = box_deltas.view(-1, 4) * torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_STDS).cuda() \
+                                 + torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_MEANS).cuda()
+                    box_deltas = box_deltas.view(1, -1, 4)
+                else:
+                    box_deltas = box_deltas.view(-1, 4) * torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_STDS).cuda() \
+                                 + torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_MEANS).cuda()
+                    box_deltas = box_deltas.view(1, -1, 4 * len(imdb.classes))
+
+            pred_boxes = bbox_transform_inv(boxes, box_deltas, 1)
+            pred_boxes = clip_boxes(pred_boxes, im_info.data, 1)
+        else:
+            # Simply repeat the boxes, once for each class
+            pred_boxes = np.tile(boxes, (1, scores.shape[1]))
+
+        pred_boxes /= im_info[0][2].item()
 
         scores = scores.squeeze()
         pred_boxes = pred_boxes.squeeze()
 
+        return pred_boxes, scores
 
-        return total_loss, losses, pred, acc
-    
+
+    def instance_all_boxes(self, pred_boxes, scores):
+        all_boxes = [[[] for _ in range(num_images)] for _ in range(imdb.num_classes)]
+
+        for j in range(1, imdb.num_classes):
+            inds = torch.nonzero(scores[:, j] > thresh).view(-1)
+            # if there is det
+            if inds.numel() > 0:
+                cls_scores = scores[:, j][inds]
+                _, order = torch.sort(cls_scores, 0, True)
+                if args.class_agnostic:
+                    cls_boxes = pred_boxes[inds, :]
+                else:
+                    cls_boxes = pred_boxes[inds][:, j * 4:(j + 1) * 4]
+
+                cls_dets = torch.cat((cls_boxes, cls_scores.unsqueeze(1)), 1)
+                # cls_dets = torch.cat((cls_boxes, cls_scores), 1)
+                cls_dets = cls_dets[order]
+                keep = nms(cls_boxes[order, :], cls_scores[order], cfg.TEST.NMS)
+                cls_dets = cls_dets[keep.view(-1).long()]
+                all_boxes[j] = cls_dets.cpu().numpy()
+            else:
+                all_boxes[j] = np.transpose(np.array([[],[],[],[],[]]), (1,0))  # empty_array
+
+            # Limit to max_per_image detections *over all classes*
+        if max_per_image > 0:
+            image_scores = np.hstack([all_boxes[j][:, -1] for j in range(1, imdb.num_classes)])
+            if len(image_scores) > max_per_image:
+                image_thresh = np.sort(image_scores)[-max_per_image]
+                for j in range(1, imdb.num_classes):
+                    keep = np.where(all_boxes[j][:, -1] >= image_thresh)[0]
+                    all_boxes[j] = all_boxes[j][keep, :]
+
+        return all_boxes
+
+
+
     
     def agnostic_box_iou(self, gts, dts, ovthresh=0.5):
 
