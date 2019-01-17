@@ -68,7 +68,7 @@ class DetectionWrapper(Dataset):
         img, gt_boxes, im_scale = self.scale(img, gt_boxes)
 
         # Convert from PIL img to tensor
-        img = trns.ToTensor()(img)
+        img = trns.ToTensor()(img)  #  -> torch.FloatTensor (C x H x W) [0.0, 1.0]
 
         # Make im_info tensor
         im_info = torch.from_numpy(np.array([img.shape[1], img.shape[2], im_scale], dtype=np.float32))
