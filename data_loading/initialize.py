@@ -110,7 +110,7 @@ def initialize_dataset(config, dataset_name, dataset_id, split, input_size, mean
                                         year='2007',
                                         transform=transforms,
                                         categories_subset=config.dataset.classes,
-                                        use_flipped=config.dataset.use_flipped,
+                                        use_flipped=False,#config.dataset.use_flipped,
                                         use_difficult=config.dataset.use_difficult)
 
 
@@ -120,7 +120,7 @@ def initialize_dataset(config, dataset_name, dataset_id, split, input_size, mean
                                                  scales=config.train.scales,
                                                  max_size=config.train.max_size,
                                                  use_all_gt=config.train.use_all_gt,
-                                                 training=True)
+                                                 training=True)#False)
 
                 return detection_set
 
