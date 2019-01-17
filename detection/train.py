@@ -217,6 +217,10 @@ def fit(config,
     since = time.time()
 
     train_loss = []
+    train_rpn_loss_cls = []
+    train_rpn_loss_box = []
+    train_rcnn_loss_cls = []
+    train_rcnn_loss_bbox = []
     train_acc = []
     val_loss = []
     val_acc = []
@@ -270,13 +274,10 @@ def fit(config,
             # Get model outputs and calculate loss
 
             # outputs = model(inputs)
-            # outputs = model(im_data, im_info, gt_boxes, num_boxes)
-            rois, cls_prob, bbox_pred, rpn_loss_cls, rpn_loss_box, rcnn_loss_cls, rcnn_loss_bbox, rois_label = \
-                model(im_data, im_info, gt_boxes, num_boxes)
+            outputs = model(im_data, im_info, gt_boxes, num_boxes)
 
-            loss = rpn_loss_cls.mean() + rpn_loss_box.mean() + rcnn_loss_cls.mean() + rcnn_loss_bbox.mean()
-
-            # loss, sample_losses, pred, acc = losses['train'](input=outputs, target=gt_boxes[:, num_boxes.data, :])
+            loss, rpn_loss_cls, rpn_loss_box, rcnn_loss_cls, rcnn_loss_bbox, acc = \
+                losses['train'](input=outputs, target=[gt_boxes, num_boxes, im_info])
 
             # backward + optimize
             optimizer.zero_grad()
@@ -285,16 +286,20 @@ def fit(config,
 
             # statistics
             train_loss.append(loss.item())
-            train_acc.append(0)#acc.item())
+            train_rpn_loss_cls.append(rpn_loss_cls.mean().item())
+            train_rpn_loss_box.append(rpn_loss_box.mean().item())
+            train_rcnn_loss_cls.append(rcnn_loss_cls.mean().item())
+            train_rcnn_loss_bbox.append(rcnn_loss_bbox.mean().item())
+            train_acc.append(acc.item())
 
             for callback in callbacks['batch_end']:
                 callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                          data={'inputs': data, 'outputs': None, 'labels': None},
-                         stats={'Training_Loss': train_loss[-1], 'Training_Acc': train_acc[-1],
-                                'Training_RPN_Class_Loss': rpn_loss_cls.mean().item(),
-                                'Training_RPN_Box_Loss': rpn_loss_box.mean().item(),
-                                'Training_RCNN_Class_Loss': rcnn_loss_cls.mean().item(),
-                                'Training_RCNN_Box_Loss': rcnn_loss_bbox.mean().item()})
+                         stats={'Training_Loss': train_loss, 'Training_Acc': train_acc,
+                                'Training_RPN_Class_Loss': train_rpn_loss_cls,
+                                'Training_RPN_Box_Loss': train_rpn_loss_box,
+                                'Training_RCNN_Class_Loss': train_rcnn_loss_cls,
+                                'Training_RCNN_Box_Loss': train_rcnn_loss_bbox})
 
             batch += 1
             step += 1
@@ -315,10 +320,11 @@ def fit(config,
                          data={},
                          stats={})
 
-            model.eval()
+            # model.eval()
             v_batch = 0
             val_loss = []
             val_acc = []
+            print("Validation with %d batches" % len(dataloaders['val']))
             for data in dataloaders['val']:
                 # v_inputs = v_inputs.to(device)
                 # v_labels = v_labels.to(device)
@@ -327,6 +333,8 @@ def fit(config,
                 im_info.data.resize_(data[1].size()).copy_(data[1])
                 gt_boxes.data.resize_(data[2].size()).copy_(data[2])
                 num_boxes.data.resize_(data[3].size()).copy_(data[3])
+
+                # print(gt_boxes)
 
                 with torch.set_grad_enabled(False):  # disables grad calculation as dont need it so can save mem
                 # Get model outputs and calculate loss
