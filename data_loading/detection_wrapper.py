@@ -43,7 +43,9 @@ class DetectionWrapper(Dataset):
         self.training = training
 
         # Set this data to that of the wrapped dataset
+
         self.data = dataset.data
+        self.sample_ids = dataset.sample_ids
         self.n_categories = dataset.n_categories
 
         if training:  # todo not sure whether to do for testing too?
@@ -267,11 +269,21 @@ class DetectionWrapper(Dataset):
         if ratio < 1:
             # this means that img_width < img_height
             padded_img = torch.FloatTensor(3, int(np.ceil(img_width / ratio)), img_width).zero_()  # zeros (padding)
-            padded_img[:, :img_height, :] = img  # place from top (padding is bottom)
+            t = padded_img.shape[1]
+            tt = img_height
+            try:
+                padded_img[:, :img_height, :] = img  # place from top (padding is bottom)
+            except RuntimeError:
+                print('g')
         elif ratio > 1:
             # this means that img_width > img_height
             padded_img = torch.FloatTensor(3, img_height, int(np.ceil(img_height * ratio))).zero_()  # zeros (padding)
-            padded_img[:, :, :img_width] = img
+            t = padded_img.shape[2]
+            tt =img_width
+            try:
+                padded_img[:, :, :img_width] = img  # place from left (padding is right)
+            except RuntimeError:
+                print('g')
         else:  # do some minor trimming into a square image
             trim_size = min(img_height, img_width)
             padded_img = img[:, :trim_size, :trim_size]
@@ -306,7 +318,7 @@ class DetectionWrapper(Dataset):
 
         # calculate, clip and store the ratios, add flag if imgs need crop
         ratio_list = []
-        for sample_id in self.data.keys():
+        for sample_id in self.sample_ids:
             width = self.data[sample_id]['width']
             height = self.data[sample_id]['height']
             ratio = width / float(height)

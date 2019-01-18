@@ -5,7 +5,7 @@ seed: 7
 model:
   type: 'fasterRCNN'
   id: '01'  # frozen
-  emb_size: 120  # num_classes
+  emb_size: 21  # num_classes
 
   backbone:
     type: 'resnet'

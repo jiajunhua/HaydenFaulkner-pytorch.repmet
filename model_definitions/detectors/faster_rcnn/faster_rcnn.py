@@ -4,11 +4,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 from torch.autograd import Variable
-from rpn.rpn import RPN
 
-from roi_layers import ROIAlign, ROIPool
+from .rpn.rpn import RPN
 
-from rpn.proposal_target_layer_cascade import _ProposalTargetLayer
+from .roi_layers import ROIAlign, ROIPool
+
+from .rpn.proposal_target_layer_cascade import _ProposalTargetLayer
 
 from utils.functions import _smooth_l1_loss
 
