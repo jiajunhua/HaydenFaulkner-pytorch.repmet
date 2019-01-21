@@ -39,7 +39,7 @@ from utils.download import download
 
 class PascalVOCDataset(Dataset):
     # setup some class paths
-    sub_root_dir = 'PascalVOC6'
+    sub_root_dir = 'PascalVOC'
     download_url_prefix = 'http://host.robots.ox.ac.uk/pascal/VOC/'
 
     def __init__(self,
