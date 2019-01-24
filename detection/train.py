@@ -300,13 +300,13 @@ def fit(config,
             for callback in callbacks['batch_end']:
                 callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                          data={'inputs': data, 'outputs': None, 'labels': None},
-                         stats={'Training_Loss': train_loss,
-                                'Training_RPN_Acc': train_rpn_acc,
-                                'Training_RCNN_Acc': train_rcnn_acc,
-                                'Training_RPN_Class_Loss': train_rpn_loss_cls,
-                                'Training_RPN_Box_Loss': train_rpn_loss_box,
-                                'Training_RCNN_Class_Loss': train_rcnn_loss_cls,
-                                'Training_RCNN_Box_Loss': train_rcnn_loss_bbox})
+                         stats={'Training_Loss': train_loss[-1],
+                                'Training_RPN_Acc': train_rpn_acc[-1],
+                                'Training_RCNN_Acc': train_rcnn_acc[-1],
+                                'Training_RPN_Class_Loss': train_rpn_loss_cls[-1],
+                                'Training_RPN_Box_Loss': train_rpn_loss_box[-1],
+                                'Training_RCNN_Class_Loss': train_rcnn_loss_cls[-1],
+                                'Training_RCNN_Box_Loss': train_rcnn_loss_bbox[-1]})
 
             batch += 1
             step += 1
@@ -317,12 +317,12 @@ def fit(config,
 
         print(
             'Avg Train: Total Loss {:.4f}, RPN Class Loss {:.4f}, RPN Box Loss {:.4f}, RPN Acc: {:.4f}, RCNN Class Loss {:.4f}, RCNN Box Loss {:.4f}, RCNN Acc: {:.4f}'.format(
-                avg_loss, np.mean(rpn_loss_cls), np.mean(rpn_loss_box), avg_rpn_acc,
-                np.mean(rcnn_loss_cls), np.mean(rcnn_loss_bbox), avg_rcnn_acc))
+                avg_loss, np.mean(train_rpn_loss_cls), np.mean(train_rpn_loss_box), avg_rpn_acc,
+                np.mean(train_rcnn_loss_cls), np.mean(train_rcnn_loss_bbox), avg_rcnn_acc))
         logger.info(
             'Avg Train: Total Loss {:.4f}, RPN Class Loss {:.4f}, RPN Box Loss {:.4f}, RPN Acc: {:.4f}, RCNN Class Loss {:.4f}, RCNN Box Loss {:.4f}, RCNN Acc: {:.4f}'.format(
-                avg_loss, np.mean(rpn_loss_cls), np.mean(rpn_loss_box), avg_rpn_acc,
-                np.mean(rcnn_loss_cls), np.mean(rcnn_loss_bbox), avg_rcnn_acc))
+                avg_loss, np.mean(train_rpn_loss_cls), np.mean(train_rpn_loss_box), avg_rpn_acc,
+                np.mean(train_rcnn_loss_cls), np.mean(train_rcnn_loss_bbox), avg_rcnn_acc))
 
         if lr_scheduler:
             lr_scheduler.step()
