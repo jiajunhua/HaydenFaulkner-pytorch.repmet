@@ -7,53 +7,44 @@
 # --------------------------------------------------------
 # Reorganized and modified by Jianwei Yang and Jiasen Lu
 # --------------------------------------------------------
+# --------------------------------------------------------
+# Modified by Hayden Faulkner
+# --------------------------------------------------------
 
 import torch
 import torch.nn as nn
-import numpy as np
 
-from .generate_anchors import generate_anchors
-from .bbox_transform import bbox_transform_inv, clip_boxes, clip_boxes_batch
-# from model.nms.nms_wrapper import nms
-from roi_layers import nms  # todo come back to NMS as its in C and needs compilation
+from ..bbox_transform import bbox_transform_inv, clip_boxes  #, clip_boxes_batch
+from .generate_anchors import shift_anchor_bases
+
+from roi_layers import nms
 
 
-class _ProposalLayer(nn.Module):
+class RPNProposal(nn.Module):
     """
-    Outputs object detection proposals by applying estimated bounding-box
-    transformations to a set of regular boxes (called "anchors").
+    RPNProposal takes RPN anchors, RPN prediction scores and box regression predictions.
+    It will transform anchors, apply NMS to get clean foreground proposals.
     """
 
     def __init__(self,
-                 feat_stride,
-                 scales,
-                 ratios,
+                 anchor_bases,
+                 stride,
                  pre_nms_top_n,
                  post_nms_top_n,
                  nms_thresh,
                  min_size):
-        super(_ProposalLayer, self).__init__()
+        super(RPNProposal, self).__init__()
 
-        self._feat_stride = feat_stride
-        self._anchors = torch.from_numpy(generate_anchors(scales=np.array(scales), ratios=np.array(ratios))).float()
-        self._num_anchors = self._anchors.size(0)
+        self._stride = stride
+        self._anchor_bases = anchor_bases
+        self._num_anchors = self._anchor_bases.shape[0]  # 9
 
         self.pre_nms_top_n  = pre_nms_top_n
         self.post_nms_top_n = post_nms_top_n
         self.nms_thresh     = nms_thresh
         self.min_size       = min_size
 
-
-        # rois blob: holds R regions of interest, each is a 5-tuple
-        # (n, x1, y1, x2, y2) specifying an image batch index n and a
-        # rectangle (x1, y1, x2, y2)
-        # top[0].reshape(1, 5)
-        #
-        # # scores blob: holds scores for R regions of interest
-        # if len(top) > 1:
-        #     top[1].reshape(1, 1, 1, 1)
-
-    def forward(self, input):
+    def forward(self, scores, bbox_deltas, im_info):
 
         # Algorithm:
         #
@@ -71,11 +62,9 @@ class _ProposalLayer(nn.Module):
 
         # the first set of _num_anchors channels are bg probs
         # the second set are the fg probs
-        scores = input[0][:, self._num_anchors:, :, :]
-        bbox_deltas = input[1]
-        im_info = input[2]
-        cfg_key = input[3]  # TRAIN or TEST
+        scores = scores[:, self._num_anchors:, :, :]
 
+        cfg_key = 'TRAIN' if self.training else 'TEST'
         pre_nms_topN  = self.pre_nms_top_n[cfg_key]
         post_nms_topN = self.post_nms_top_n[cfg_key]
         nms_thresh    = self.nms_thresh[cfg_key]
@@ -83,25 +72,11 @@ class _ProposalLayer(nn.Module):
 
         batch_size = bbox_deltas.size(0)
 
-        feat_height, feat_width = scores.size(2), scores.size(3)
-        shift_x = np.arange(0, feat_width) * self._feat_stride
-        shift_y = np.arange(0, feat_height) * self._feat_stride
-        shift_x, shift_y = np.meshgrid(shift_x, shift_y)
-        shifts = torch.from_numpy(np.vstack((shift_x.ravel(), shift_y.ravel(),
-                                  shift_x.ravel(), shift_y.ravel())).transpose())
-        shifts = shifts.contiguous().type_as(scores).float()
-
-        A = self._num_anchors
-        K = shifts.size(0)
-
-        self._anchors = self._anchors.type_as(scores)
-        # anchors = self._anchors.view(1, A, 4) + shifts.view(1, K, 4).permute(1, 0, 2).contiguous()
-        anchors = self._anchors.view(1, A, 4) + shifts.view(K, 1, 4)
-        anchors = anchors.view(1, K * A, 4).expand(batch_size, K * A, 4)
+        anchors = shift_anchor_bases(self._anchor_bases, self._stride, (scores.size(2), scores.size(3)))
+        anchors = torch.from_numpy(anchors).type_as(scores)
 
         # Transpose and reshape predicted bbox transformations to get them
         # into the same order as the anchors:
-
         bbox_deltas = bbox_deltas.permute(0, 2, 3, 1).contiguous()
         bbox_deltas = bbox_deltas.view(batch_size, -1, 4)
 
@@ -110,16 +85,16 @@ class _ProposalLayer(nn.Module):
         scores = scores.view(batch_size, -1)
 
         # Convert anchors into proposals via bbox transformations
-        proposals = bbox_transform_inv(anchors, bbox_deltas, batch_size)
+        proposals = bbox_transform_inv(anchors, bbox_deltas, batch_size)  # box_decoder in gluoncv (l64 rpn/proposal.py)
 
         # 2. clip predicted boxes to image
-        proposals = clip_boxes(proposals, im_info, batch_size)
+        proposals = clip_boxes(proposals, im_info, batch_size)  # clipper in gluoncv (l68rpn/proposal.py)
         # proposals = clip_boxes_batch(proposals, im_info, batch_size)
 
         # assign the score to 0 if it's non keep.
         # keep = self._filter_boxes(proposals, min_size * im_info[:, 2])
 
-        # trim keep index to make it euqal over batch
+        # trim keep index to make it equal over batch
         # keep_idx = torch.cat(tuple(keep_idx), 0)
 
         # scores_keep = scores.view(-1)[keep_idx].view(batch_size, trim_size)
@@ -131,7 +106,8 @@ class _ProposalLayer(nn.Module):
         proposals_keep = proposals
         _, order = torch.sort(scores_keep, 1, True)
 
-        output = scores.new(batch_size, post_nms_topN, 5).zero_()
+        rpn_scores = scores.new(batch_size, post_nms_topN, 1).zero_()
+        rpn_bbox = scores.new(batch_size, post_nms_topN, 5).zero_()
         for i in range(batch_size):
             # # 3. remove predicted boxes with either height or width < threshold
             # # (NOTE: convert min_size to input image scale stored in im_info[2])
@@ -142,7 +118,7 @@ class _ProposalLayer(nn.Module):
             # # 5. take top pre_nms_topN (e.g. 6000)
             order_single = order[i]
 
-            if pre_nms_topN > 0 and pre_nms_topN < scores_keep.numel():
+            if 0 < pre_nms_topN < scores_keep.numel():
                 order_single = order_single[:pre_nms_topN]
 
             proposals_single = proposals_single[order_single, :]
@@ -159,12 +135,16 @@ class _ProposalLayer(nn.Module):
             proposals_single = proposals_single[keep_idx_i, :]
             scores_single = scores_single[keep_idx_i, :]
 
-            # padding 0 at the end.
             num_proposal = proposals_single.size(0)
-            output[i, :, 0] = i
-            output[i, :num_proposal, 1:] = proposals_single
+            rpn_scores[i, :, 0] = i  # first item is the batch index
+            rpn_scores[i, :num_proposal, :] = scores_single
 
-        return output
+            # padding 0 at the end.
+            # num_proposal = proposals_single.size(0)
+            rpn_bbox[i, :, 0] = i
+            rpn_bbox[i, :num_proposal, 1:] = proposals_single
+
+        return rpn_scores, rpn_bbox, anchors
 
     def backward(self, top, propagate_down, bottom):
         """This layer does not propagate gradients."""

@@ -221,9 +221,11 @@ def fit(config,
     train_rpn_loss_box = []
     train_rcnn_loss_cls = []
     train_rcnn_loss_bbox = []
-    train_acc = []
+    train_rpn_acc = []
+    train_rcnn_acc = []
     val_loss = []
-    val_acc = []
+    val_rpn_acc = []
+    val_rcnn_acc = []
 
     best_state = copy.deepcopy(model.state_dict())
     best_state = model.state_dict()
@@ -274,9 +276,11 @@ def fit(config,
             # Get model outputs and calculate loss
 
             # outputs = model(inputs)
-            outputs = model(im_data, im_info, gt_boxes, num_boxes)
+            gt_rois, rois, rois_label, cls_pred, bbox_pred, rpn_scores, rpn_bboxs, rpn_cls_scores, rpn_bbox_preds, anchors =\
+                model(im_data, im_info, gt_boxes, num_boxes)
 
-            loss, rpn_loss_cls, rpn_loss_box, rcnn_loss_cls, rcnn_loss_bbox, acc = \
+            outputs = (gt_rois, rois, rois_label, cls_pred, bbox_pred, rpn_scores, rpn_bboxs, rpn_cls_scores, rpn_bbox_preds, anchors)
+            loss, rpn_loss_cls, rpn_loss_box, rcnn_loss_cls, rcnn_loss_bbox, rpn_acc, rcnn_acc = \
                 losses['train'](input=outputs, target=[gt_boxes, num_boxes, im_info])
 
             # backward + optimize
@@ -290,12 +294,15 @@ def fit(config,
             train_rpn_loss_box.append(rpn_loss_box.mean().item())
             train_rcnn_loss_cls.append(rcnn_loss_cls.mean().item())
             train_rcnn_loss_bbox.append(rcnn_loss_bbox.mean().item())
-            train_acc.append(acc.item())
+            train_rpn_acc.append(rpn_acc.item())
+            train_rcnn_acc.append(rcnn_acc.item())
 
             for callback in callbacks['batch_end']:
                 callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                          data={'inputs': data, 'outputs': None, 'labels': None},
-                         stats={'Training_Loss': train_loss, 'Training_Acc': train_acc,
+                         stats={'Training_Loss': train_loss,
+                                'Training_RPN_Acc': train_rpn_acc,
+                                'Training_RCNN_Acc': train_rcnn_acc,
                                 'Training_RPN_Class_Loss': train_rpn_loss_cls,
                                 'Training_RPN_Box_Loss': train_rpn_loss_box,
                                 'Training_RCNN_Class_Loss': train_rcnn_loss_cls,
@@ -305,10 +312,18 @@ def fit(config,
             step += 1
 
         avg_loss = np.mean(train_loss[-batch:])
-        avg_acc = np.mean(train_acc[-batch:])
+        avg_rpn_acc = np.mean(train_rpn_acc[-batch:])
+        avg_rcnn_acc = np.mean(train_rcnn_acc[-batch:])
 
-        print('Avg Training Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
-        logger.info('Avg Training Loss: {:.4f} Acc: {:.4f}'.format(avg_loss, avg_acc))
+        print(
+            'Avg Train: Total Loss {:.4f}, RPN Class Loss {:.4f}, RPN Box Loss {:.4f}, RPN Acc: {:.4f}, RCNN Class Loss {:.4f}, RCNN Box Loss {:.4f}, RCNN Acc: {:.4f}'.format(
+                avg_loss, np.mean(rpn_loss_cls), np.mean(rpn_loss_box), avg_rpn_acc,
+                np.mean(rcnn_loss_cls), np.mean(rcnn_loss_bbox), avg_rcnn_acc))
+        logger.info(
+            'Avg Train: Total Loss {:.4f}, RPN Class Loss {:.4f}, RPN Box Loss {:.4f}, RPN Acc: {:.4f}, RCNN Class Loss {:.4f}, RCNN Box Loss {:.4f}, RCNN Acc: {:.4f}'.format(
+                avg_loss, np.mean(rpn_loss_cls), np.mean(rpn_loss_box), avg_rpn_acc,
+                np.mean(rcnn_loss_cls), np.mean(rcnn_loss_bbox), avg_rcnn_acc))
+
         if lr_scheduler:
             lr_scheduler.step()
 
@@ -324,6 +339,10 @@ def fit(config,
             v_batch = 0
             val_loss = []
             val_acc = []
+            val_rpn_loss_cls = []
+            val_rpn_loss_box = []
+            val_rcnn_loss_cls = []
+            val_rcnn_loss_bbox = []
             print("Validation with %d batches" % len(dataloaders['val']))
             for data in dataloaders['val']:
                 # v_inputs = v_inputs.to(device)
@@ -338,36 +357,50 @@ def fit(config,
 
                 with torch.set_grad_enabled(False):  # disables grad calculation as dont need it so can save mem
                 # Get model outputs and calculate loss
-                    rois, cls_prob, bbox_pred, rpn_loss_cls, rpn_loss_box, RCNN_loss_cls, RCNN_loss_bbox, rois_label = \
+
+                    gt_rois, rois, rois_label, cls_pred, bbox_pred, rpn_scores, rpn_bboxs, rpn_cls_scores, rpn_bbox_preds, anchors = \
                         model(im_data, im_info, gt_boxes, num_boxes)
 
-                loss = rpn_loss_cls.mean() + rpn_loss_box.mean() + rcnn_loss_cls.mean() + rcnn_loss_bbox.mean()
-                # loss, sample_losses, pred, acc = losses['val'](input=v_outputs, target=v_labels)
+                    outputs = (
+                    gt_rois, rois, rois_label, cls_pred, bbox_pred, rpn_scores, rpn_bboxs, rpn_cls_scores, rpn_bbox_preds,
+                    anchors)
+                    loss, rpn_loss_cls, rpn_loss_box, rcnn_loss_cls, rcnn_loss_bbox, rpn_acc, rcnn_acc = \
+                        losses['val'](input=outputs, target=[gt_boxes, num_boxes, im_info])
 
                 # statistics
                 val_loss.append(loss.item())
-                val_acc.append(0)#acc.item())
+                val_rpn_acc.append(rpn_acc.item())
+                val_rcnn_acc.append(rcnn_acc.item())
+                val_rpn_loss_cls.append(rpn_loss_cls.mean().item())
+                val_rpn_loss_box.append(rpn_loss_box.mean().item())
+                val_rcnn_loss_cls.append(rcnn_loss_cls.mean().item())
+                val_rcnn_loss_bbox.append(rcnn_loss_bbox.mean().item())
 
                 for callback in callbacks['validation_batch_end']:
                     callback(epoch, batch, step, model, dataloaders, losses, optimizer,  # todo should we make this v_batch?
                              data={'inputs': data, 'outputs': None, 'labels': None},
-                             stats={'Validation_Loss': val_loss[-1], 'Validation_Acc': val_acc[-1],
-                                    'Validation_RPN_Class_Loss': rpn_loss_cls.mean().item(),
-                                    'Validation_RPN_Box_Loss': rpn_loss_box.mean().item(),
-                                    'Validation_RCNN_Class_Loss': rcnn_loss_cls.mean().item(),
-                                    'Validation_RCNN_Box_Loss': rcnn_loss_bbox.mean().item()})
+                             stats={'Validation_Loss': val_loss[-1],
+                                    'Validation_RPN_Acc': val_rpn_acc[-1],
+                                    'Validation_RCNN_Acc': val_rcnn_acc[-1],
+                                    'Validation_RPN_Class_Loss': val_rpn_loss_cls[-1],
+                                    'Validation_RPN_Box_Loss': val_rpn_loss_box[-1],
+                                    'Validation_RCNN_Class_Loss': val_rcnn_loss_cls[-1],
+                                    'Validation_RCNN_Box_Loss': val_rcnn_loss_bbox[-1]})
 
                 v_batch += 1
 
             avg_v_loss = np.mean(val_loss)
-            avg_v_acc = np.mean(val_acc)
+            avg_v_rpn_acc = np.mean(val_rpn_acc)
+            avg_v_rcnn_acc = np.mean(val_rcnn_acc)
 
-            print('Avg Validation Loss: {:.4f} Acc: {:.4f}'.format(avg_v_loss, avg_v_acc))
-            logger.info('Avg Validation Loss: {:.4f} Acc: {:.4f}'.format(avg_v_loss, avg_v_acc))
+            print('Avg Validation: Total Loss {:.4f}, RPN Class Loss {:.4f}, RPN Box Loss {:.4f}, RPN Acc: {:.4f}, RCNN Class Loss {:.4f}, RCNN Box Loss {:.4f}, RCNN Acc: {:.4f}'.format(
+                avg_v_loss, np.mean(val_rpn_loss_cls), np.mean(val_rpn_loss_box), avg_v_rpn_acc, np.mean(val_rcnn_loss_cls), np.mean(val_rcnn_loss_bbox), avg_v_rcnn_acc))
+            logger.info('Avg Validation: Total Loss {:.4f}, RPN Class Loss {:.4f}, RPN Box Loss {:.4f}, RPN Acc: {:.4f}, RCNN Class Loss {:.4f}, RCNN Box Loss {:.4f}, RCNN Acc: {:.4f}'.format(
+                avg_v_loss, np.mean(val_rpn_loss_cls), np.mean(val_rpn_loss_box), avg_v_rpn_acc, np.mean(val_rcnn_loss_cls), np.mean(val_rcnn_loss_bbox), avg_v_rcnn_acc))
 
             # Best validation accuracy yet?
-            if avg_v_acc > best_acc:
-                best_acc = avg_v_acc
+            if avg_v_rcnn_acc > best_acc:
+                best_acc = avg_v_rcnn_acc
                 # best_state = copy.deepcopy(model.state_dict())
                 best_state = model.state_dict()
                 if hasattr(losses['train'], 'reps'):
@@ -380,13 +413,19 @@ def fit(config,
             for callback in callbacks['validation_end']:
                 callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                          data={'inputs': None, 'outputs': None, 'labels': None},
-                         stats={'Avg_Validation_Loss': avg_v_loss, 'Avg_Validation_Acc': avg_v_acc})
+                         stats={'Avg_Validation_Loss': avg_v_loss,
+                                'Avg_Validation_RPN_Acc': avg_v_rpn_acc,
+                                'Avg_Validation_RCNN_Acc': avg_v_rcnn_acc,
+                                'Avg_Validation_RPN_Class_Loss': np.mean(val_rpn_loss_cls),
+                                'Avg_Validation_RPN_Box_Loss': np.mean(val_rpn_loss_box),
+                                'Avg_Validation_RCNN_Class_Loss': np.mean(val_rcnn_loss_cls),
+                                'Avg_Validation_RCNN_Box_Loss': np.mean(val_rcnn_loss_bbox)})
 
         # End of epoch callbacks
         for callback in callbacks['epoch_end']:
             callback(epoch, batch, step, model, dataloaders, losses, optimizer,
                      data={'inputs': None, 'outputs': None, 'labels': None},
-                     stats={'Avg_Training_Loss': avg_loss, 'Avg_Training_Acc': avg_acc})
+                     stats={'Avg_Training_Loss': avg_loss, 'Avg_Training_Acc': avg_rcnn_acc})
 
         # Checkpoint?
         if config.train.checkpoint_every > 0 and epoch % config.train.checkpoint_every == 0:
@@ -411,7 +450,7 @@ def fit(config,
 
     # If no validation we save the last model as best
     if config.val.every < 1:
-        best_acc = avg_acc
+        best_acc = avg_rcnn_acc
         # best_state = copy.deepcopy(model.state_dict())
         best_state = model.state_dict()
         if hasattr(losses['train'], 'reps'):
@@ -420,7 +459,7 @@ def fit(config,
             reps = None
         save_checkpoint(config, epoch, model, optimizer, best_acc, reps=reps, is_best=True)
 
-    return model, best_state, best_acc, train_loss, train_acc, val_loss, val_acc
+    return model, best_state, best_acc, train_loss, avg_rcnn_acc, val_loss, val_acc
 
 
 def main():

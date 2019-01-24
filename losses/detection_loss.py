@@ -1,197 +1,118 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 import numpy as np
+
+from utils.functions import _smooth_l1_loss
+from model_definitions.detectors.faster_rcnn.rpn.rpn_target import RPNTargetGenerator
+from model_definitions.detectors.faster_rcnn.rcnn_target import RCNNTargetGenerator
 
 
 class DetectionLoss(nn.Module):
 
-    def __init__(self):
+    def __init__(self, config):
         super(DetectionLoss, self).__init__()
 
-    def forward(self, input, target):
-        rois = input[0]
-        cls_prob = input[1]
-        bbox_pred = input[2]
-        rpn_loss_cls = input[3]
-        rpn_loss_box = input[4]
-        rcnn_loss_cls = input[5]
-        rcnn_loss_bbox = input[6]
-        rois_label = input[7]
+        self.get_rpn_anchor_targets = RPNTargetGenerator(rpn_batch_size=config.train.rpn.batch_size,
+                                                         positive_overlap=config.train.rpn.positive_overlap,
+                                                         negative_overlap=config.train.rpn.negative_overlap,
+                                                         fg_fraction=config.train.rpn.fg_fraction,
+                                                         clobber_positives=config.train.rpn.clobber_positives,
+                                                         n_base_anchors=len(config.model.rpn.anchor_scales)*len(config.model.rpn.anchor_ratios), # 9
+                                                         positive_weight=config.train.rpn.positive_weight,
+                                                         bbox_inside_weights=config.train.rpn.bbox_inside_weights)
 
+        self.get_rcnn_proposal_targets = RCNNTargetGenerator(bbox_normalize_targets_precomputed=config.train.bbox_normalize_targets_precomputed,
+                                                             bbox_normalize_means=config.train.bbox_normalize_means,
+                                                             bbox_normalize_stds=config.train.bbox_normalize_stds,
+                                                             bbox_normalize_inside_weights=config.train.bbox_normalize_inside_weights)
+
+    def forward(self, input, target):
+        gt_rois = input[0]
+        rois = input[1]
+        rois_label = input[2]
+
+        cls_pred = input[3]
+        bbox_pred = input[4]
+
+        rpn_scores = input[5]
+        rpn_bboxs = input[6]
+
+        rpn_cls_scores = input[7]
+        rpn_bbox_preds = input[8]
+
+        anchors = input[9]
+
+        gt_boxes = target[0]
+        num_boxes = target[1]
         im_info = target[2]
 
+        assert gt_boxes is not None
 
+        batch_size = gt_boxes.size(0)
+
+        # Compute RPN targets
+        rpn_cls_targets, rpn_bbox_targets, rpn_bbox_inside_weights, rpn_bbox_outside_weights = \
+            self.get_rpn_anchor_targets(rpn_cls_scores.data, gt_boxes, im_info, num_boxes, anchors)
+
+        # compute bbox classification loss
+        rpn_cls_scores_reshape = rpn_cls_scores.view(batch_size, 2, int(np.round(rpn_cls_scores.size(1)*rpn_cls_scores.size(2)/2)), -1)  # (1,18,75,38) > (1,2,513,38)
+        rpn_cls_scores = rpn_cls_scores_reshape.permute(0, 2, 3, 1).contiguous().view(batch_size, -1, 2)  # (1, 19494, 2)
+        rpn_cls_targets = rpn_cls_targets.view(batch_size, -1)
+
+        rpn_keep = Variable(rpn_cls_targets.view(-1).ne(-1).nonzero().view(-1))
+        rpn_cls_scores = torch.index_select(rpn_cls_scores.view(-1, 2), 0, rpn_keep)
+        rpn_cls_targets = torch.index_select(rpn_cls_targets.view(-1), 0, rpn_keep.data)
+        rpn_cls_targets = Variable(rpn_cls_targets.long())
+        rpn_loss_cls = F.cross_entropy(rpn_cls_scores, rpn_cls_targets)
+        fg_cnt = torch.sum(rpn_cls_targets.data.ne(0))
+
+        # compute bbox regression loss
+        rpn_bbox_inside_weights = Variable(rpn_bbox_inside_weights)
+        rpn_bbox_outside_weights = Variable(rpn_bbox_outside_weights)
+        rpn_bbox_targets = Variable(rpn_bbox_targets)
+
+        rpn_loss_box = _smooth_l1_loss(rpn_bbox_preds, rpn_bbox_targets, rpn_bbox_inside_weights, rpn_bbox_outside_weights, sigma=3, dim=[1, 2, 3])
+
+
+        # Compute RCNN targets
+        rois_target, rois_inside_ws, rois_outside_ws = self.get_rcnn_proposal_targets(gt_rois, rois, rois_label)
+
+        # rois_label = Variable(rois_label.view(-1).long())
+        rois_target = Variable(rois_target.view(-1, rois_target.size(2)))
+        rois_inside_ws = Variable(rois_inside_ws.view(-1, rois_inside_ws.size(2)))
+        rois_outside_ws = Variable(rois_outside_ws.view(-1, rois_outside_ws.size(2)))
+
+
+        # compute bbox classification loss
+        cls_prob = F.softmax(cls_pred, 1)
+        rcnn_loss_cls = F.cross_entropy(cls_pred, rois_label)
+
+        # compute bbox regression loss
+        rcnn_loss_bbox = _smooth_l1_loss(bbox_pred, rois_target, rois_inside_ws, rois_outside_ws)
+
+        # Add the losses together
         loss = rpn_loss_cls.mean() + rpn_loss_box.mean() + rcnn_loss_cls.mean() + rcnn_loss_bbox.mean()
-        acc = torch.Tensor([0])
 
-        # scores = cls_prob.data
-        # boxes = rois.data[:, :, 1:5]
-        #
-        # pred_boxes, scores = self.transform_boxes(boxes, scores, im_info)
-        #
-        # instance_all_boxes = self.instance_all_boxes(pred_boxes, scores)
-        #
-        # instance_map = #todo add function to take the instance boxes and calc map
+        # Calc RPN Acc
+        rpn_label = rpn_cls_targets
+        rpn_weight = rpn_cls_targets>=0  # for the ignore -1 flag
+        rpn_cls_logits = rpn_cls_scores
 
-        return loss, rpn_loss_cls.mean(), rpn_loss_box.mean(), rcnn_loss_cls.mean(), rcnn_loss_bbox.mean(), acc
+        num_inst = rpn_weight.sum()
 
+        pred_label = torch.argmax(rpn_cls_logits, dim=1, keepdim=True).squeeze()
 
-    def transform_boxes(self, boxes, scores, im_info):
-        if cfg.TEST.BBOX_REG:
-            # Apply bounding-box regression deltas
-            box_deltas = bbox_pred.data
-            if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
-                # Optionally normalize targets by a precomputed mean and stdev
-                if args.class_agnostic:
-                    box_deltas = box_deltas.view(-1, 4) * torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_STDS).cuda() \
-                                 + torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_MEANS).cuda()
-                    box_deltas = box_deltas.view(1, -1, 4)
-                else:
-                    box_deltas = box_deltas.view(-1, 4) * torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_STDS).cuda() \
-                                 + torch.FloatTensor(cfg.TRAIN.BBOX_NORMALIZE_MEANS).cuda()
-                    box_deltas = box_deltas.view(1, -1, 4 * len(imdb.classes))
-
-            pred_boxes = bbox_transform_inv(boxes, box_deltas, 1)
-            pred_boxes = clip_boxes(pred_boxes, im_info.data, 1)
-        else:
-            # Simply repeat the boxes, once for each class
-            pred_boxes = np.tile(boxes, (1, scores.shape[1]))
-
-        pred_boxes /= im_info[0][2].item()
-
-        scores = scores.squeeze()
-        pred_boxes = pred_boxes.squeeze()
-
-        return pred_boxes, scores
+        num_acc = ((pred_label == rpn_label) * rpn_weight).sum()
+        rpn_acc = num_acc / num_inst
 
 
-    def instance_all_boxes(self, pred_boxes, scores):
-        all_boxes = [[[] for _ in range(num_images)] for _ in range(imdb.num_classes)]
+        # Calc RCNN Acc
+        pred_label = torch.argmax(cls_pred, dim=-1)
+        num_acc = torch.sum(pred_label == rois_label)
 
-        for j in range(1, imdb.num_classes):
-            inds = torch.nonzero(scores[:, j] > thresh).view(-1)
-            # if there is det
-            if inds.numel() > 0:
-                cls_scores = scores[:, j][inds]
-                _, order = torch.sort(cls_scores, 0, True)
-                if args.class_agnostic:
-                    cls_boxes = pred_boxes[inds, :]
-                else:
-                    cls_boxes = pred_boxes[inds][:, j * 4:(j + 1) * 4]
+        rcnn_acc = num_acc / rois_label.shape[0]
 
-                cls_dets = torch.cat((cls_boxes, cls_scores.unsqueeze(1)), 1)
-                # cls_dets = torch.cat((cls_boxes, cls_scores), 1)
-                cls_dets = cls_dets[order]
-                keep = nms(cls_boxes[order, :], cls_scores[order], cfg.TEST.NMS)
-                cls_dets = cls_dets[keep.view(-1).long()]
-                all_boxes[j] = cls_dets.cpu().numpy()
-            else:
-                all_boxes[j] = np.transpose(np.array([[],[],[],[],[]]), (1,0))  # empty_array
-
-            # Limit to max_per_image detections *over all classes*
-        if max_per_image > 0:
-            image_scores = np.hstack([all_boxes[j][:, -1] for j in range(1, imdb.num_classes)])
-            if len(image_scores) > max_per_image:
-                image_thresh = np.sort(image_scores)[-max_per_image]
-                for j in range(1, imdb.num_classes):
-                    keep = np.where(all_boxes[j][:, -1] >= image_thresh)[0]
-                    all_boxes[j] = all_boxes[j][keep, :]
-
-        return all_boxes
-
-
-
-    
-    def agnostic_box_iou(self, gts, dts, ovthresh=0.5):
-
-        nd = len(dts)  # number of detections
-        ng = len(gts)
-        tp = np.zeros(nd)
-        fp = np.zeros(nd)
-
-        if dts.shape[0] > 0:
-            # sort by confidence
-            sorted_ind = np.argsort(-confidence)
-            dts = dts[sorted_ind, :]
-
-            # go down dets and mark TPs and FPs
-            for d in range(nd):
-                dt = dts[d, :].astype(float)
-                ovmax = -np.inf
-
-                if gts.size > 0:
-                    # compute overlaps
-                    overlaps = self.iou(gts, dt)
-                    ovmax = np.max(overlaps)
-                    jmax = np.argmax(overlaps)
-
-                if ovmax > ovthresh:
-                    if not R['det'][jmax]:
-                        tp[d] = 1.
-                        R['det'][jmax] = 1
-                    else:
-                        fp[d] = 1.
-                else:
-                    fp[d] = 1.
-
-        # compute precision recall
-        fp = np.cumsum(fp)
-        tp = np.cumsum(tp)
-        rec = tp / ng
-        # avoid divide by zero in case the first detection matches a difficult
-        # ground truth
-        prec = tp / np.maximum(tp + fp, np.finfo(np.float64).eps)
-        ap = self.voc_ap(rec, prec, False)
-        return rec, prec, ap
-
-
-    def iou(self, gts, dt):
-        ixmin = np.maximum(gts[:, 0], dt[0])
-        iymin = np.maximum(gts[:, 1], dt[1])
-        ixmax = np.minimum(gts[:, 2], dt[2])
-        iymax = np.minimum(gts[:, 3], dt[3])
-        iw = np.maximum(ixmax - ixmin + 1., 0.)
-        ih = np.maximum(iymax - iymin + 1., 0.)
-        inters = iw * ih
-
-        # union
-        uni = ((dt[2] - dt[0] + 1.) * (dt[3] - dt[1] + 1.) +
-               (gts[:, 2] - gts[:, 0] + 1.) *
-               (gts[:, 3] - gts[:, 1] + 1.) - inters)
-
-        return inters / uni
-
-    def voc_ap(self, rec, prec, use_07_metric=False):
-        """ ap = voc_ap(rec, prec, [use_07_metric])
-        Compute VOC AP given precision and recall.
-        If use_07_metric is true, uses the
-        VOC 07 11 point method (default:False).
-        """
-        if use_07_metric:
-            # 11 point metric
-            ap = 0.
-            for t in np.arange(0., 1.1, 0.1):
-                if np.sum(rec >= t) == 0:
-                    p = 0
-                else:
-                    p = np.max(prec[rec >= t])
-                ap = ap + p / 11.
-        else:
-            # correct AP calculation
-            # first append sentinel values at the end
-            mrec = np.concatenate(([0.], rec, [1.]))
-            mpre = np.concatenate(([0.], prec, [0.]))
-
-            # compute the precision envelope
-            for i in range(mpre.size - 1, 0, -1):
-                mpre[i - 1] = np.maximum(mpre[i - 1], mpre[i])
-
-            # to calculate area under PR curve, look for points
-            # where X axis (recall) changes value
-            i = np.where(mrec[1:] != mrec[:-1])[0]
-
-            # and sum (\Delta recall) * prec
-            ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
-        return ap
+        return loss, rpn_loss_cls.mean(), rpn_loss_box.mean(), rcnn_loss_cls.mean(), rcnn_loss_bbox.mean(), rpn_acc, rcnn_acc

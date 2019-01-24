@@ -9,7 +9,7 @@ from easydict import EasyDict as edict
 config = edict()
 config.project = 'pytorch.repmet'
 config.seed = 7
-config.gpus = ''
+config.gpus = '0'
 
 # Shared Defaults
 config.run_type = None
@@ -24,7 +24,7 @@ config.model.root_dir = 'models'
 config.model.type = None
 config.model.id = None
 
-config.model.emb_size = ''
+config.model.emb_size = '' # num classes when not emb
 config.model.dist = 'euc'
 
 config.model.backbone = edict()
@@ -36,7 +36,7 @@ config.model.backbone.resnet_fixed_blocks = 1
 config.model.rpn = edict()
 config.model.rpn.anchor_scales = [8, 16, 32]
 config.model.rpn.anchor_ratios = [0.5, 1, 2]
-config.model.rpn.feat_stride = [16, ]
+config.model.rpn.feat_stride = 16.0
 
 # Detection
 config.model.max_n_gt_boxes = 20
@@ -121,7 +121,7 @@ config.train.rpn.nms_thresh = 0.7
 config.train.rpn.min_size = 8
 config.train.rpn.batch_size = 256  # Total number of examples
 config.train.rpn.clobber_positives = False  # If an anchor statisfied by positive and negative conditions set to negative
-config.train.rpn.fg_fraction = 0.5  # Max number of foreground examples
+config.train.rpn.fg_fraction = 0.5  # Max number of foreground examples fg_rois_per_image=this*rpn.batch_size ie 256*0.5
 config.train.rpn.positive_overlap = 0.7  # IOU >= thresh: positive example
 config.train.rpn.negative_overlap = 0.3  # IOU < thresh: negative example
 

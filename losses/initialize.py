@@ -40,11 +40,11 @@ def initialize_loss(config, loss_name, split='train', n_classes=None):
     elif loss_name == 'detection':
         assert n_classes is not None
         if split == 'train':
-            return DetectionLoss()
+            return DetectionLoss(config)
         elif split == 'val':
-            return DetectionLoss()
+            return DetectionLoss(config)
         elif split == 'test':
-            return DetectionLoss()
+            return DetectionLoss(config)
         else:
             raise ValueError("Split '%s' not recognised for the %s loss." % (split, loss_name))
     elif loss_name == 'ce':

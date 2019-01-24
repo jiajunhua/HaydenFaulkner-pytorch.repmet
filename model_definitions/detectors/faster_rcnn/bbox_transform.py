@@ -33,7 +33,6 @@ def bbox_transform(ex_rois, gt_rois):
 
 
 def bbox_transform_batch(ex_rois, gt_rois):
-    # used in anchor_target_layer
     if ex_rois.dim() == 2:
         ex_widths = ex_rois[:, 2] - ex_rois[:, 0] + 1.0
         ex_heights = ex_rois[:, 3] - ex_rois[:, 1] + 1.0
@@ -75,7 +74,6 @@ def bbox_transform_batch(ex_rois, gt_rois):
 
 
 def bbox_transform_inv(boxes, deltas, batch_size):
-    # used in proposal_layer
     widths = boxes[:, :, 2] - boxes[:, :, 0] + 1.0
     heights = boxes[:, :, 3] - boxes[:, :, 1] + 1.0
     ctr_x = boxes[:, :, 0] + 0.5 * widths
@@ -126,7 +124,6 @@ def clip_boxes_batch(boxes, im_shape, batch_size):
 
 
 def clip_boxes(boxes, im_shape, batch_size):
-    # this is used in place of clip_boxes_batch in proposal_layer
     for i in range(batch_size):
         boxes[i,:,0::4].clamp_(0, im_shape[i, 1]-1)
         boxes[i,:,1::4].clamp_(0, im_shape[i, 0]-1)
@@ -165,12 +162,13 @@ def bbox_overlaps(anchors, gt_boxes):
 
 
 def bbox_overlaps_batch(anchors, gt_boxes):
-    # used in anchor_target_layer
     """
-    anchors: (N, 4) ndarray of float
-    gt_boxes: (b, K, 5) ndarray of float
-    overlaps: (N, K) ndarray of overlap between boxes and query_boxes
+
+    :param anchors: (N, 4) ndarray of float
+    :param gt_boxes: (b, K, 5) ndarray of float
+    :return: (N, K) ndarray of overlap between boxes and query_boxes
     """
+
     batch_size = gt_boxes.size(0)
 
     if anchors.dim() == 2:

@@ -7,34 +7,39 @@
 # --------------------------------------------------------
 # Reorganized and modified by Jianwei Yang and Jiasen Lu
 # --------------------------------------------------------
+# --------------------------------------------------------
+# Modified by Hayden Faulkner
+# was rpn_target.py
+# --------------------------------------------------------
 
 import torch
 import torch.nn as nn
 import numpy as np
-import numpy.random as npr
 
-# from model.utils.config import cfg
-from .generate_anchors import generate_anchors
-from .bbox_transform import clip_boxes, bbox_overlaps_batch, bbox_transform_batch
+from ..bbox_transform import clip_boxes, bbox_overlaps_batch, bbox_transform_batch
 
 
-DEBUG = False
-
-
-class _AnchorTargetLayer(nn.Module):
+class RPNTargetSampler(nn.Module):
     """
-        Assign anchors to ground-truth targets. Produces anchor classification
-        labels and bounding-box regression targets.
-    """
-    def __init__(self, feat_stride, scales, ratios, rpn_batch_size, clobber_positives, fg_fraction, positive_overlap,
-                 negative_overlap, positive_weight, bbox_inside_weights):
-        super(_AnchorTargetLayer, self).__init__()
+        A sampler to choose positive/negative samples from anchors
 
-        self._feat_stride = feat_stride
-        self._scales = scales
-        anchor_scales = scales
-        self._anchors = torch.from_numpy(generate_anchors(scales=np.array(anchor_scales), ratios=np.array(ratios))).float()
-        self._num_anchors = self._anchors.size(0)
+        rpn_batch_size : int
+            Number of samples for RCNN targets
+
+        clobber_positives : bool
+            If an anchor statisfied by positive and negative conditions set to negative
+
+        fg_fraction : float
+            Max number of foreground examples, fg_rois_per_image=this*rpn_batch_size
+
+        positive_overlap : float
+            IOU >= thresh: positive example
+
+        negative_overlap : float
+            IOU < thresh: negative example
+    """
+    def __init__(self, rpn_batch_size, clobber_positives, fg_fraction, positive_overlap, negative_overlap):
+        super(RPNTargetSampler, self).__init__()
 
         # allow boxes to sit over the edge by a small amount
         self._allowed_border = 0  # default is 0
@@ -47,60 +52,31 @@ class _AnchorTargetLayer(nn.Module):
 
         self.RPN_BATCHSIZE = rpn_batch_size
 
-        self.RPN_POSITIVE_WEIGHT = positive_weight
-        self.RPN_BBOX_INSIDE_WEIGHTS = bbox_inside_weights
-
-
-    def forward(self, input):
+    def forward(self, rpn_cls_score, gt_boxes, im_info, num_boxes, anchors):
         # Algorithm:
         #
         # for each (H, W) location i
         #   generate 9 anchor boxes centered on cell i
         #   apply predicted bbox deltas at cell i to each of the 9 anchors
-        # filter out-of-image anchors
-
-        rpn_cls_score = input[0]
-        gt_boxes = input[1]
-        im_info = input[2]
-        num_boxes = input[3]
-
-        # map of shape (..., H, W)
-        height, width = rpn_cls_score.size(2), rpn_cls_score.size(3)
 
         batch_size = gt_boxes.size(0)
-
-        feat_height, feat_width = rpn_cls_score.size(2), rpn_cls_score.size(3)
-        shift_x = np.arange(0, feat_width) * self._feat_stride
-        shift_y = np.arange(0, feat_height) * self._feat_stride
-        shift_x, shift_y = np.meshgrid(shift_x, shift_y)
-        shifts = torch.from_numpy(np.vstack((shift_x.ravel(), shift_y.ravel(),
-                                  shift_x.ravel(), shift_y.ravel())).transpose())
-        shifts = shifts.contiguous().type_as(rpn_cls_score).float()
-
-        A = self._num_anchors
-        K = shifts.size(0)
-
-        self._anchors = self._anchors.type_as(gt_boxes) # move to specific gpu.
-        all_anchors = self._anchors.view(1, A, 4) + shifts.view(K, 1, 4)
-        all_anchors = all_anchors.view(K * A, 4)
-
-        total_anchors = int(K * A)
-
-        keep = ((all_anchors[:, 0] >= -self._allowed_border) &
-                (all_anchors[:, 1] >= -self._allowed_border) &
-                (all_anchors[:, 2] < int(im_info[0][1]) + self._allowed_border) &
-                (all_anchors[:, 3] < int(im_info[0][0]) + self._allowed_border))
+        anchors = anchors[0]  # removing batch axis
+        # filter out-of-image anchors
+        img_width = int(im_info[0][1])
+        img_height = int(im_info[0][0])
+        keep = ((anchors[:, 0] >= -self._allowed_border) &
+                (anchors[:, 1] >= -self._allowed_border) &
+                (anchors[:, 2] < img_width + self._allowed_border) &
+                (anchors[:, 3] < img_height + self._allowed_border))
 
         inds_inside = torch.nonzero(keep).view(-1)
 
-        # keep only inside anchors
-        anchors = all_anchors[inds_inside, :]
+        anchors = anchors[inds_inside, :]
 
         # label: 1 is positive, 0 is negative, -1 is dont care
         labels = gt_boxes.new(batch_size, inds_inside.size(0)).fill_(-1)
-        bbox_inside_weights = gt_boxes.new(batch_size, inds_inside.size(0)).zero_()
-        bbox_outside_weights = gt_boxes.new(batch_size, inds_inside.size(0)).zero_()
 
+        # iou of anchors with gt_boxes
         overlaps = bbox_overlaps_batch(anchors, gt_boxes)
 
         max_overlaps, argmax_overlaps = torch.max(overlaps, 2)
@@ -153,48 +129,85 @@ class _AnchorTargetLayer(nn.Module):
         offset = torch.arange(0, batch_size)*gt_boxes.size(1)
 
         argmax_overlaps = argmax_overlaps + offset.view(batch_size, 1).type_as(argmax_overlaps)
+
+        samples = labels
+        matches = argmax_overlaps
+
+        return samples, matches, inds_inside, anchors
+
+
+class RPNTargetGenerator(nn.Module):
+    """
+        RPN target generator network.
+
+        positive_weight : float
+            Give the positive RPN examples weight of p * 1 / {num positives} and give negatives a weight of (1 - p)
+            Set to -1.0 to use uniform example weighting
+
+        bbox_inside_weights : tuple
+
+    """
+
+    def __init__(self, rpn_batch_size, positive_overlap, negative_overlap, fg_fraction, clobber_positives, n_base_anchors, positive_weight, bbox_inside_weights):
+        super(RPNTargetGenerator, self).__init__()
+
+        self.n_base_anchors = n_base_anchors
+
+        self.RPN_POSITIVE_WEIGHT = positive_weight
+        self.RPN_BBOX_INSIDE_WEIGHTS = bbox_inside_weights
+
+        self._sampler = RPNTargetSampler(rpn_batch_size, clobber_positives, fg_fraction, positive_overlap, negative_overlap)
+
+    def forward(self, rpn_cls_score, gt_boxes, im_info, num_boxes, anchors):
+
+        # map of shape (..., H, W)
+        height, width = rpn_cls_score.size(2), rpn_cls_score.size(3)
+
+        batch_size = gt_boxes.size(0)
+
+        total_anchors = anchors.shape[1]
+
+        samples, matches, inds_inside, anchors = self._sampler(rpn_cls_score, gt_boxes, im_info, num_boxes, anchors)
+        cls_targets = samples
+        argmax_overlaps = matches
+
+        bbox_inside_weights = gt_boxes.new(batch_size, inds_inside.size(0)).zero_()
+        bbox_outside_weights = gt_boxes.new(batch_size, inds_inside.size(0)).zero_()
+
         bbox_targets = _compute_targets_batch(anchors, gt_boxes.view(-1,5)[argmax_overlaps.view(-1), :].view(batch_size, -1, 5))
 
         # use a single value instead of 4 values for easy index.
-        bbox_inside_weights[labels==1] = self.RPN_BBOX_INSIDE_WEIGHTS[0]
-
+        bbox_inside_weights[cls_targets==1] = self.RPN_BBOX_INSIDE_WEIGHTS[0]
+        i = 0
         if self.RPN_POSITIVE_WEIGHT < 0:
-            num_examples = torch.sum(labels[i] >= 0)
+            num_examples = torch.sum(cls_targets[i] >= 0)
             positive_weights = 1.0 / num_examples.item()
             negative_weights = 1.0 / num_examples.item()
         else:
             assert ((self.RPN_POSITIVE_WEIGHT > 0) &
                     (self.RPN_POSITIVE_WEIGHT < 1))
 
-        bbox_outside_weights[labels == 1] = positive_weights
-        bbox_outside_weights[labels == 0] = negative_weights
+        bbox_outside_weights[cls_targets == 1] = positive_weights
+        bbox_outside_weights[cls_targets == 0] = negative_weights
 
-        labels = _unmap(labels, total_anchors, inds_inside, batch_size, fill=-1)
+        cls_targets = _unmap(cls_targets, total_anchors, inds_inside, batch_size, fill=-1)
         bbox_targets = _unmap(bbox_targets, total_anchors, inds_inside, batch_size, fill=0)
         bbox_inside_weights = _unmap(bbox_inside_weights, total_anchors, inds_inside, batch_size, fill=0)
         bbox_outside_weights = _unmap(bbox_outside_weights, total_anchors, inds_inside, batch_size, fill=0)
 
-        outputs = []
+        cls_targets = cls_targets.view(batch_size, height, width, self.n_base_anchors).permute(0, 3, 1, 2).contiguous()
+        cls_targets = cls_targets.view(batch_size, 1, self.n_base_anchors * height, width)
 
-        labels = labels.view(batch_size, height, width, A).permute(0, 3, 1, 2).contiguous()
-        labels = labels.view(batch_size, 1, A * height, width)
-        outputs.append(labels)
-
-        bbox_targets = bbox_targets.view(batch_size, height, width, A*4).permute(0, 3, 1, 2).contiguous()
-        outputs.append(bbox_targets)
+        bbox_targets = bbox_targets.view(batch_size, height, width, self.n_base_anchors*4).permute(0, 3, 1, 2).contiguous()
 
         anchors_count = bbox_inside_weights.size(1)
         bbox_inside_weights = bbox_inside_weights.view(batch_size, anchors_count, 1).expand(batch_size, anchors_count, 4)
-
-        bbox_inside_weights = bbox_inside_weights.contiguous().view(batch_size, height, width, 4*A).permute(0, 3, 1, 2).contiguous()
-
-        outputs.append(bbox_inside_weights)
+        bbox_inside_weights = bbox_inside_weights.contiguous().view(batch_size, height, width, 4*self.n_base_anchors).permute(0, 3, 1, 2).contiguous()
 
         bbox_outside_weights = bbox_outside_weights.view(batch_size, anchors_count, 1).expand(batch_size, anchors_count, 4)
-        bbox_outside_weights = bbox_outside_weights.contiguous().view(batch_size, height, width, 4*A).permute(0, 3, 1, 2).contiguous()
-        outputs.append(bbox_outside_weights)
+        bbox_outside_weights = bbox_outside_weights.contiguous().view(batch_size, height, width, 4*self.n_base_anchors).permute(0, 3, 1, 2).contiguous()
 
-        return outputs
+        return cls_targets, bbox_targets, bbox_inside_weights, bbox_outside_weights
 
     def backward(self, top, propagate_down, bottom):
         """This layer does not propagate gradients."""
@@ -203,6 +216,7 @@ class _AnchorTargetLayer(nn.Module):
     def reshape(self, bottom, top):
         """Reshaping happens during the call to forward."""
         pass
+
 
 def _unmap(data, count, inds, batch_size, fill=0):
     """ Unmap a subset of item (data) back to the original set of items (of

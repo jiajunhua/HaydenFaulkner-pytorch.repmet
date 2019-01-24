@@ -162,7 +162,7 @@ Model checkpoints will be available soon
 | `repmet_flowers_1_12_4`        |     60 |  1500 |   00:32:17 |     1.1 GB |      |
 | `repmet_flowers_3_12_4`        |     60 |  1500 |   00:33:45 |     1.3 GB |      |
 | `repmet_flowers_3_12_4_r18l`   |    150 |  3750 |   01:28:26 |     3.5 GB |      |
-| `repmet_flowers_inc3F_1_12_4`  |    150 |  3750 |   02:00:39 |     3.5 GB |      |
+| `repmet_flowers_inc3F_1_12_4`  |    150 |  3750 |   02:04:54 |     3.5 GB |      |
 | `repmet_flowers_inc3F_3_12_4`  |    150 |  3750 |   01:59:57 |     3.5 GB |      |
 | `repmet_flowers_inc3L_1_12_4`  |    150 |  3750 |   00:00:00 |     8.6 GB |      |
 
@@ -181,12 +181,12 @@ These results are calculated with `classification/evaluate.py`
 
 **Omniglot (Test Set):**
 
-| Model (`.yaml`)  | Shot  |  Way  |     | *Original Paper* | *This Code**  |
-| :--------------- | ----- | ----- | --- | ---------------: | ------------: |
-| `protonets_1_5`  |   1   |   5   |     |            98.8% |        98.81% |
-| `protonets_5_5`  |   5   |   5   |     |            99.7% |        99.56% |
-| `protonets_1_20` |   1   |   20  |     |            96.0% |        94.81% |
-| `protonets_5_20` |   5   |   20  |     |            98.9% |        98.51% |
+| Model (`.yaml`)  | Shot  |  Way  |     | *Orig. Paper* | *This Code**  |
+| :--------------- | ----- | ----- | --- | ------------: | ------------: |
+| `protonets_1_5`  |   1   |   5   |     |         98.8% |        98.81% |
+| `protonets_5_5`  |   5   |   5   |     |         99.7% |        99.56% |
+| `protonets_1_20` |   1   |   20  |     |         96.0% |        94.81% |
+| `protonets_5_20` |   5   |   20  |     |         98.9% |        98.51% |
 
 *One test run of 100 episodes
 
@@ -200,14 +200,18 @@ Model checkpoints will be available soon
 
 **Flowers (Test Set):**
 
-| Model (`.yaml`)                | Backbone    | Frozen  |  k  |  m  |  d  |     | *Original Paper* | *This Code**  |
-| :----------------------------- | ----------- | ------- | --- | --- | --- | --- | ---------------: | ------------: |
-| `repmet_flowers_1_12_4`        | Resnet18    | `true`  |  1  | 12  |  4  |     |                - |        75.35% |
-| `repmet_flowers_3_12_4`        | Resnet18    | `true`  |  3  | 12  |  4  |     |                - |        76.18% |
-| `repmet_flowers_3_12_4_r18l`** | Resnet18    | `false` |  3  | 12  |  4  |     |                - |        44.70% |
-| `repmet_flowers_inc3F_1_12_4`  | InceptionV3 | `true`  |  1  | 12  |  4  |     |                - |        72.93% |
-| `repmet_flowers_inc3F_3_12_4`  | InceptionV3 | `true`  |  3  | 12  |  4  |     |                - |        73.25% |
-| `repmet_flowers_3_12_4_inc3l`  | InceptionV3 | `false` |  3  | 12  |  4  |     |            89.0% |             % |
+| Model (`.yaml`)                | Backbone    | PreTrained^ | Frozen  |  k  |  m  |  d  |     | *Orig. Paper* | *This Code**  |
+| :----------------------------- | ----------- | ---------- | ------- | --- | --- | --- | --- | ------------: | ------------: |
+| `repmet_flowers_1_12_4`        | Resnet18    | `true`     | `true`  |  1  | 12  |  4  |     |             - |        75.35% |
+| `repmet_flowers_3_12_4`        | Resnet18    | `true`     | `true`  |  3  | 12  |  4  |     |             - |        76.18% |
+| `repmet_flowers_3_12_4_r18l`** | Resnet18    | `true`     | `false` |  3  | 12  |  4  |     |             - |        44.70% |
+| `repmet_flowers_inc3F_1_12_4`  | InceptionV3 | `true`     | `true`  |  1  | 12  |  4  |     |             - |        73.26% |
+| `repmet_flowers_inc3F_3_12_4`  | InceptionV3 | `true`     | `true`  |  3  | 12  |  4  |     |             - |        73.25% |
+| `repmet_flowers_inc3L_1_12_4`  | InceptionV3 | `true`     | `false` |  1  | 12  |  4  |     |             - |             % |
+| `repmet_flowers_inc3LU_1_12_4` | InceptionV3 | `false`    | `false` |  1  | 12  |  4  |     |             - |             % |
+| `repmet_flowers_3_12_4_inc3l`  | InceptionV3 | ?          | `false` |  3  | 12  |  4  |     |         89.0% |             % |
+
+^From `torchvision`
 
 *One test run of 500 episodes
 
@@ -216,10 +220,10 @@ Model checkpoints will be available soon
 
 **Pets (Test Set):**
 
-| Model (`.yaml`)                | Backbone    | Frozen  |  k  |  m  |  d  |     | *Original Paper* | *This Code**  |
-| :----------------------------- | ----------- | ------- | --- | --- | --- | --- | ---------------: | ------------: |
-| `repmet_pets_r18F_1_12_4`**    | Resnet18    | `true`  |  1  | 12  |  4  |     |                - |        84.95% |
-| `repmet_pets_3_12_4_inc3l`     | InceptionV3 | `false` |  3  | 12  |  4  |     |            93.1% |             % |
+| Model (`.yaml`)                | Backbone    | Frozen  |  k  |  m  |  d  |     | *Orig. Paper* | *This Code**  |
+| :----------------------------- | ----------- | ------- | --- | --- | --- | --- | ------------: | ------------: |
+| `repmet_pets_r18F_1_12_4`**    | Resnet18    | `true`  |  1  | 12  |  4  |     |             - |        84.95% |
+| `repmet_pets_3_12_4_inc3l`     | InceptionV3 | `false` |  3  | 12  |  4  |     |         93.1% |             % |
 
 *One test run of 500 episodes
 
