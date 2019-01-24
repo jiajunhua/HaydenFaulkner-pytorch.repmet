@@ -75,7 +75,7 @@ def initialize_callbacks(config, model, datasets, samplers, dataloaders, losses,
 
         callbacks['epoch_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
 
-        callbacks['validation_end'] = [TensorBoard(every=config.vis.every, tb_sw=tb_sw)]
+        callbacks['validation_end'] = [TensorBoard(every=1, tb_sw=tb_sw)]
 
     else:
         warnings.warn(config.run_type + "not recognised, no callbacks initialised.")
