@@ -1,5 +1,5 @@
 # Prototypical Networks, Magnet Loss and RepMet in PyTorch
-**NOTE 1: THIS PROJECT IS BEING REWORKED, CURRENTLY ONLY PROTOTYPICAL NETS WORKS**
+**THIS PROJECT IS STILL UNDER REVISIONS - USE WITH CAUTION**
 
 ### Prototypical Networks (Few-Shot Classification)
 ![Figure 1 from paper](proto.png)
@@ -72,15 +72,39 @@ pip install tensorboard  # will install tensorflow CPU version as dependency fir
 pip install tensorboardX
 ```
 
+1. Clone the repo
+```
+git clone https://github.com/HaydenFaulkner/pytorch.repmet.git
+```
+
+2. Make a `data` and a `models` directory to store the data and models respectively.
+```
+cd pytorch.repmet
+mkdir data
+mkdir models
+```
+
+### Detection
+If wanting to use the detection pipeline you will need to compile the roi layers.
+```
+cd model_definitions/detectors/faster_rcnn  # change the working dir
+setup.py build develop  # run the compiler via the setup.py file
+```
+
+The expected kind of output is shown in the `setup.py` file.
+
+
 ## Implementation
-
-**NOTE: Currently only Prototypical Networks working**
-
-
+### Classification
 See `classification/train.py` for training the model, and the `classification/experiments` directory for the config `.yaml` files.
+
+### Detection
+See `detection/train.py` for training the model, and the `detection/experiments` directory for the config `.yaml` files.
 
 
 ## Datasets
+Datasets are automatically downloaded, organised and stored in the `data` directory when called.
+
 ### [Omniglot](https://github.com/brendenlake/omniglot)
 This dataset contains 1623 different handwritten characters from 50 different alphabets.
 Each of the 1623 characters was drawn online via Amazon's Mechanical Turk by 20 different people.
@@ -126,8 +150,26 @@ Images are RGB with different scales and ratios.
 
 **Test:** 8580 samples spanning 120 classes (avg 71 per class)
 
+### [Pascal VOC](http://host.robots.ox.ac.uk/pascal/VOC/)
+This dataset is used for detection and contains images with bounding boxes marked out around 20 general object categories.
+Images are RGB with different scales and ratios.
+
+**2007**
+**Train:** 6301 samples (boxes) spanning 20 classes and 2501 images (avg 315 per class, 2 per image)
+
+**Val:** 6307 samples (boxes) spanning 20 classes and 2510 images (avg 315 per class, 2 per image)
+
+**Test:** 12032 samples (boxes) spanning 20 classes and 4952 images (avg 601 per class, 2 per image)
+
+**2012**
+**Train:** 13609 samples (boxes) spanning 20 classes and 5717 images (avg 680 per class, 2 per image)
+
+**Val:** 13841 samples (boxes) spanning 20 classes and 5823 images (avg 692 per class, 2 per image)
+
+**Uses 2007 Test Set**
+
 ### Coming Soon
-PascalVoc, ImageNet
+ImageNet
 
 ## Training Behaviour
 Time format: HH:MM:SS
