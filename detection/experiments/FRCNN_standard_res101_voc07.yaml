@@ -60,4 +60,4 @@ test:  # will only do one epoch
 
 
 vis:
-  every: 100  # update tensorboard every x steps (episodes)
+  every: 1000  # update tensorboard every x steps (episodes)

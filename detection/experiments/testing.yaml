@@ -44,7 +44,7 @@ train:
     batch_size: 256
 
 val:
-  every: 1 #0  # run validation every x epochs
+  every: 1  # run validation every x epochs
 
   sampler: 'detection'
   loss: 'detection'
@@ -60,4 +60,4 @@ test:  # will only do one epoch
 
 
 vis:
-  every: 100  # update tensorboard every x steps (episodes)
+  every: 1000  # update tensorboard every x steps (episodes)
